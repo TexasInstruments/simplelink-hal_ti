@@ -38,7 +38,8 @@ zephyr_library()
 
 zephyr_library_sources(
   driverlib/gpio.c
+  driverlib/interrupt.c
   driverlib/lrfd.c
   driverlib/setup.c
-  driverlib/interrupt.c
+  driverlib/uart.c
   )
