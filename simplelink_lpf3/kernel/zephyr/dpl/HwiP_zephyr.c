@@ -48,7 +48,10 @@ int HwiP_swiPIntNum = INT_CPUIRQ1;
 
 static struct sl_isr_args sl_IRQ01_cb = {NULL, 0};
 static struct sl_isr_args sl_IRQ03_cb = {NULL, 0};
+static struct sl_isr_args s1_IRQ04_cb = {NULL, 0};
 static struct sl_isr_args sl_IRQ16_cb = {NULL, 0};
+static struct sl_isr_args s1_LRFD_IRQ0_cb = {NULL, 0};
+static struct sl_isr_args s1_LRFD_IRQ1_cb = {NULL, 0};
 
 /*
  *  ======== HwiP_construct ========
@@ -71,10 +74,12 @@ HwiP_Handle HwiP_construct(HwiP_Struct *handle, int interruptNum, HwiP_Fxn hwiFx
     }
 
     /*
-     * Currently only support INT_CPUIRQ3 (Oscillator ISR), INT_CPUIRQ16
-     * (Batmon ISR), and INT_CPUIRQ1 (SwiP)
+     * Currently only support INT_CPUIRQ1 (SwiP), INT_CPUIRQ3 (Oscillator ISR),
+     * INT_CPUIRQ16 (Batmon ISR), INT_CPUIRQ4 (RCL Scheduler ISR), INT_LRFD_IRQ0
+     * (RCL Command Handler ISR) and INT_LRFD_IRQ1 (RCL Dispatcher ISR)
      */
-    __ASSERT(INT_CPUIRQ1 == interruptNum || INT_CPUIRQ3 == interruptNum || INT_CPUIRQ16 == interruptNum,
+    __ASSERT((INT_CPUIRQ1 == interruptNum) || (INT_CPUIRQ3 == interruptNum) || (INT_CPUIRQ4 == interruptNum) ||
+                 (INT_CPUIRQ16 == interruptNum) || (INT_LRFD_IRQ0 == interruptNum) || (INT_LRFD_IRQ1 == interruptNum),
              "Unexpected interruptNum: %d\r\n",
              interruptNum);
 
@@ -111,11 +116,29 @@ HwiP_Handle HwiP_construct(HwiP_Struct *handle, int interruptNum, HwiP_Fxn hwiFx
             obj->cb         = &sl_IRQ03_cb;
             irq_connect_dynamic(INT_CPUIRQ3 - 16, priority, sl_isr, &sl_IRQ03_cb, 0);
             break;
+        case INT_CPUIRQ4:
+            s1_IRQ04_cb.cb  = hwiFxn;
+            s1_IRQ04_cb.arg = arg;
+            obj->cb         = &s1_IRQ04_cb;
+            irq_connect_dynamic(INT_CPUIRQ4 - 16, priority, sl_isr, &s1_IRQ04_cb, 0);
+            break;
         case INT_CPUIRQ16:
             sl_IRQ16_cb.cb  = hwiFxn;
             sl_IRQ16_cb.arg = arg;
             obj->cb         = &sl_IRQ16_cb;
             irq_connect_dynamic(INT_CPUIRQ16 - 16, priority, sl_isr, &sl_IRQ16_cb, 0);
+            break;
+        case INT_LRFD_IRQ0:
+            s1_LRFD_IRQ0_cb.cb  = hwiFxn;
+            s1_LRFD_IRQ0_cb.arg = arg;
+            obj->cb             = &s1_LRFD_IRQ0_cb;
+            irq_connect_dynamic(INT_LRFD_IRQ0 - 16, priority, sl_isr, &s1_LRFD_IRQ0_cb, 0);
+            break;
+        case INT_LRFD_IRQ1:
+            s1_LRFD_IRQ1_cb.cb  = hwiFxn;
+            s1_LRFD_IRQ1_cb.arg = arg;
+            obj->cb             = &s1_LRFD_IRQ1_cb;
+            irq_connect_dynamic(INT_LRFD_IRQ1 - 16, priority, sl_isr, &s1_LRFD_IRQ1_cb, 0);
             break;
         default:
             return (NULL);
