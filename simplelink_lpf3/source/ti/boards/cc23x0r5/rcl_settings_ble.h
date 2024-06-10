@@ -19,7 +19,6 @@
 // SDK                    SimpleLink LPF3 SDK 8.11.00.09
 // Board                  LP-EM-CC2340R5
 // PHY                    2.4 GHz - Bluetooth 5, LE - 1 Mbps / 2 Mbps / Coded
-// PHY abbreviation       ble
 //
 //
 // PHY PROPERTIES
@@ -29,8 +28,8 @@
 //     Channel            17 (2440 MHz) 
 //     TX output power    5.0 dBm 
 
-#ifndef RCLSETTINGSBLE_H
-#define RCLSETTINGSBLE_H
+#ifndef RCLSETTINGS_H
+#define RCLSETTINGS_H
 
 #include <ti/devices/DeviceFamily.h>
 #include <ti/drivers/rcl/LRF.h>
@@ -38,20 +37,20 @@
 
 
 // PHY features
-#define RCL_PHY_FEATURE_SUB_PHY_1_MBPS_BLE      0x0000
-#define RCL_PHY_FEATURE_SUB_PHY_2_MBPS_BLE      0x0001
-#define RCL_PHY_FEATURE_SUB_PHY_CODED_BLE       0x0002
-#define RCL_PHY_FEATURE_CODED_TX_RATE_S8_BLE    0x0000
-#define RCL_PHY_FEATURE_CODED_TX_RATE_S2_BLE    0x0004
+#define RCL_PHY_FEATURE_SUB_PHY_1_MBPS      0x0000
+#define RCL_PHY_FEATURE_SUB_PHY_2_MBPS      0x0001
+#define RCL_PHY_FEATURE_SUB_PHY_CODED       0x0002
+#define RCL_PHY_FEATURE_CODED_TX_RATE_S8    0x0000
+#define RCL_PHY_FEATURE_CODED_TX_RATE_S2    0x0004
 
 
 // LRF data structures
-extern const LRF_TxShape      LRF_shapeBaseGfsk067Ble;
-extern const LRF_TxShape      LRF_shapeBaseGfsk05Ble;
-extern const LRF_SwConfig     LRF_swConfig1MbpsBle;
-extern const LRF_SwConfig     LRF_swConfig2MbpsBle;
-extern const LRF_TxPowerTable LRF_txPowerTableBle;
-extern const LRF_Config       LRF_configBle;
+extern const LRF_TxShape      LRF_shapeBaseGfsk067;
+extern const LRF_TxShape      LRF_shapeBaseGfsk05;
+extern const LRF_SwConfig     LRF_swConfig1Mbps;
+extern const LRF_SwConfig     LRF_swConfig2Mbps;
+extern const LRF_TxPowerTable LRF_txPowerTable;
+extern const LRF_Config       LRF_config;
 
 
 // SUB-PHY register field values
