@@ -1412,10 +1412,10 @@ static int16_t RCL_Handler_BLE_CS_convertRtt(RCL_CmdBleCs *pCmd, uint8_t mode, i
     toAD -= (pCmd->mode.role == RCL_CmdBleCs_Role_Initiator) ? (-adj) : (+adj);
 
     /* Convert to 0.5ns units as per HCI spec requires */
-    toAD *= 41.6666;
+    toAD *= (float)41.6666;
 
     /* Round */
-    toAD += 0.5;
+    toAD += (float)0.5;
 
     /* Return the adjusted timeticks */
     return ((int16_t) toAD);
