@@ -46,6 +46,7 @@ zephyr_library_sources(
   driverlib/uart.c
   driverlib/spi.c
   driverlib/vims.c
+  driverlib/adc.c
   )
 
 # RF patches
