@@ -47,6 +47,8 @@ zephyr_library_sources(
   driverlib/spi.c
   driverlib/vims.c
   driverlib/adc.c
+  driverlib/cpu.c
+  driverlib/i2c.c
   )
 
 # RF patches
