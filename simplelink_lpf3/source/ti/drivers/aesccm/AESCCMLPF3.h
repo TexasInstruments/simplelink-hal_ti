@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021-2024, Texas Instruments Incorporated
+ * Copyright (c) 2021-2025, Texas Instruments Incorporated
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -44,7 +44,9 @@
  * The Low Power F3 family of devices has dedicated hardware accelerators.
  * CC23XX devices have one dedicated accelerator whereas CC27XX devices have two
  * (Primary and Secondary). Combined they can perform AES encryption operations with
- * 128-bit, 192-bit and 256-bit keys. Only one operation can be carried out on the
+ * 128-bit, 192-bit and 256-bit keys.
+ * CC35XX devices have only one dedicated hardware accelerator.
+ * Only one operation can be carried out on the
  * accelerator at a time. Mutual exclusion is implemented at the driver level and
  * coordinated between all drivers relying on the accelerator. It is transparent to
  * the application and only noted to ensure sensible access timeouts are set.
@@ -53,7 +55,7 @@
  *  - Only plaintext CryptoKeys are supported by this implementation.
  *  - Maximum AAD length is limited to 65279-bytes.
  *
- *  The following limitations apply to the AESCCMLPF3 Driver for CC27xx device family only:
+ *  The following limitations apply to the AESCCMLPF3 Driver for CC27xx and CC35XX device families:
  *  - The CryptoKey input must have the correct encoding, @ref CryptoKey.h.
  *  - The application can only use one handle per driver.
  *    Concurrent dynamic instances will be supported in the future.
@@ -77,13 +79,19 @@
 #include <ti/drivers/cryptoutils/aes/AESCommonLPF3.h>
 
 #include <ti/devices/DeviceFamily.h>
-#include DeviceFamily_constructPath(driverlib/aes.h)
+#if (DeviceFamily_PARENT != DeviceFamily_PARENT_CC35XX)
+    #include DeviceFamily_constructPath(driverlib/aes.h)
+#endif
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
 #define AESCCMLPF3_AAD_BUFFER_SIZE 2U
+
+#if (DeviceFamily_PARENT == DeviceFamily_PARENT_CC27XX) || (DeviceFamily_PARENT == DeviceFamily_PARENT_CC35XX)
+    #include <ti/drivers/cryptoutils/cryptokey/CryptoKeyKeyStore_PSA.h>
+#endif
 
 /*!
  *  @brief      AESCCMLPF3 Hardware Attributes
@@ -124,7 +132,11 @@ typedef struct
     uint8_t bufferedAADLength;
     uint8_t macLength;
     uint8_t nonceLength;
-#if (DeviceFamily_PARENT == DeviceFamily_PARENT_CC27XX)
+#if (DeviceFamily_PARENT == DeviceFamily_PARENT_CC27XX) || (DeviceFamily_PARENT == DeviceFamily_PARENT_CC35XX)
+    uint8_t KeyStore_keyingMaterial[AESCommonLPF3_256_KEY_LENGTH_BYTES];
+    uint8_t inputFinalBlock[AES_BLOCK_SIZE];
+    uint8_t aadFinalBlock[AES_BLOCK_SIZE];
+    uint8_t outputFinalBlock[AES_BLOCK_SIZE] __attribute__((aligned(4)));
     size_t aadLength;
     volatile size_t totalDataLengthRemaining;
     volatile size_t totalAADLengthRemaining;
@@ -135,13 +147,15 @@ typedef struct
      */
     int_fast16_t hsmStatus;
     uint32_t tempAssetID;
+    uint32_t keyAssetID;
+    KeyStore_PSA_KeyLocation keyLocation;
     /* To indicate whether a segmented operation is in progress
      */
     bool segmentedOperationInProgress;
 #endif
 } AESCCMLPF3_Object;
 
-#if (DeviceFamily_PARENT == DeviceFamily_PARENT_CC27XX)
+#if (DeviceFamily_PARENT == DeviceFamily_PARENT_CC27XX) || (DeviceFamily_PARENT == DeviceFamily_PARENT_CC35XX)
 /*!
  *  @brief  Function to set the mac for an AES CCM segmented operation.
  *          This API needs to be called only when the subsequent #AESCCM_addData() operation is processing all of the

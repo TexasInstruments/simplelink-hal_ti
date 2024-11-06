@@ -17,6 +17,17 @@
 #include DeviceFamily_constructPath(inc/hw_memmap.h)
 #include DeviceFamily_constructPath(inc/hw_systim.h)
 
+
+#define ClockP_TICK_PERIOD (USEC_PER_SEC / CONFIG_SYS_CLOCK_TICKS_PER_SEC)
+
+/* Override ClockP defines */
+#ifdef ClockP_STRUCT_SIZE
+#undef ClockP_STRUCT_SIZE
+#endif
+#define ClockP_STRUCT_SIZE   (sizeof(struct k_timer) + \
+	sizeof(ClockP_Fxn) + sizeof(uintptr_t) + \
+	sizeof(uint32_t) * 2) + sizeof(bool)
+
 /** Max number of ClockP ticks into the future supported by this ClockP
  * implementation.
  *
@@ -82,7 +93,7 @@ static ClockP_Obj *dpl_clock_pool_alloc()
 
 static void dpl_clock_pool_free(ClockP_Obj *clock)
 {
-    k_mem_slab_free(&clock_slab, (void *)&clock);
+    k_mem_slab_free(&clock_slab, clock);
 
     return;
 }
@@ -133,7 +144,7 @@ ClockP_Handle ClockP_construct(ClockP_Struct *handle, ClockP_Fxn clockFxn, uint3
 
     obj->clock_fxn = clockFxn;
     obj->arg       = params->arg;
-    obj->period    = params->period * ClockP_getSystemTickPeriod() / USEC_PER_MSEC;
+    obj->period    = params->period * ClockP_getSystemTickPeriod();
     obj->timeout   = timeout;
     obj->active    = false;
 
@@ -151,15 +162,14 @@ ClockP_Handle ClockP_construct(ClockP_Struct *handle, ClockP_Fxn clockFxn, uint3
 /*
  *  ======== ClockP_getSystemTickPeriod ========
  */
-uint32_t ClockP_tickPeriod = (USEC_PER_SEC / CONFIG_SYS_CLOCK_TICKS_PER_SEC);
 uint32_t ClockP_getSystemTickPeriod()
 {
-    return ClockP_tickPeriod;
+    return ClockP_TICK_PERIOD;
 }
 
 uint32_t ClockP_getSystemTicks()
 {
-    return (uint32_t)k_ms_to_ticks_ceil32(k_uptime_get_32());
+    return k_uptime_get_32();
 }
 
 /*
@@ -187,44 +197,10 @@ void ClockP_setTimeout(ClockP_Handle handle, uint32_t timeout)
  */
 void ClockP_start(ClockP_Handle handle)
 {
-    ClockP_Obj *obj = (ClockP_Obj *)handle;
-    int32_t timeout;
-    int32_t period;
+	ClockP_Obj *obj = (ClockP_Obj *)handle;
 
-    __ASSERT_NO_MSG(obj->timeout / CONFIG_SYS_CLOCK_TICKS_PER_SEC <= UINT32_MAX / USEC_PER_MSEC);
-    __ASSERT_NO_MSG(obj->period / CONFIG_SYS_CLOCK_TICKS_PER_SEC <= UINT32_MAX / USEC_PER_MSEC);
-
-    /* Avoid overflow */
-    if (obj->timeout > UINT32_MAX / USEC_PER_MSEC)
-    {
-        timeout = obj->timeout / CONFIG_SYS_CLOCK_TICKS_PER_SEC * USEC_PER_MSEC;
-    }
-    else if ((obj->timeout != 0) && (obj->timeout < CONFIG_SYS_CLOCK_TICKS_PER_SEC / USEC_PER_MSEC))
-    {
-        /* For small timeouts we use 1 msec */
-        timeout = 1;
-    }
-    else
-    {
-        timeout = obj->timeout * USEC_PER_MSEC / CONFIG_SYS_CLOCK_TICKS_PER_SEC;
-    }
-
-    if (obj->period > UINT32_MAX / USEC_PER_MSEC)
-    {
-        period = obj->period / CONFIG_SYS_CLOCK_TICKS_PER_SEC * USEC_PER_MSEC;
-    }
-    else if ((obj->period != 0) && (obj->period < CONFIG_SYS_CLOCK_TICKS_PER_SEC / USEC_PER_MSEC))
-    {
-        period = 1;
-    }
-    else
-    {
-        period = obj->period * USEC_PER_MSEC / CONFIG_SYS_CLOCK_TICKS_PER_SEC;
-    }
-
-    k_timer_start(&obj->timer, K_MSEC(timeout), K_MSEC(period));
-
-    obj->active = true;
+	k_timer_start(&obj->timer, K_TICKS(obj->timeout), K_TICKS(obj->period));
+	obj->active = true;
 }
 
 /*
@@ -258,15 +234,12 @@ void ClockP_setFunc(ClockP_Handle handle, ClockP_Fxn clockFxn, uintptr_t arg)
  */
 void ClockP_sleep(uint32_t sec)
 {
-    uint32_t ticksToSleep;
-
     if (sec > ClockP_PERIOD_MAX_SEC)
     {
         sec = ClockP_PERIOD_MAX_SEC;
     }
     /* Convert from seconds to number of ticks */
-    ticksToSleep = (sec * USEC_PER_SEC) / ClockP_TICK_PERIOD;
-    k_sleep(K_TICKS(ticksToSleep));
+    k_sleep(K_SECONDS(sec));
 }
 
 /*
@@ -283,7 +256,7 @@ void ClockP_usleep(uint32_t usec)
 uint32_t ClockP_getTimeout(ClockP_Handle handle)
 {
     ClockP_Obj *obj = (ClockP_Obj *)handle;
-    return k_timer_remaining_get(&obj->timer) * CONFIG_SYS_CLOCK_TICKS_PER_SEC / USEC_PER_MSEC;
+    return k_timer_remaining_get(&obj->timer);
 }
 
 /*
@@ -300,7 +273,7 @@ bool ClockP_isActive(ClockP_Handle handle)
  */
 void ClockP_getCpuFreq(ClockP_FreqHz *freq)
 {
-    freq->lo = (uint32_t)CONFIG_SYS_CLOCK_HW_CYCLES_PER_SEC;
+    freq->lo = (uint32_t)CONFIG_CPU_FREQUENCY;
     freq->hi = 0;
 }
 
