@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021-2024, Texas Instruments Incorporated
+ * Copyright (c) 2021-2025, Texas Instruments Incorporated
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -42,6 +42,18 @@
  *  The output is suitable for applications requiring cryptographically
  *  random data such as keying material for private or symmetric keys.
  *
+ *  The RNG driver for CC27XX devices is strictly a HSM implementation only. #RNG_init()
+ *  only constructs RTOS-related objects, and #RNG_open() initializes the driver's internal metadata.
+ *  To get random data, use one of the following APIs:
+ *      - #RNG_getRandomBits()
+ *      - #RNG_getLERandomNumberInRange()
+ *      - #RNG_getBERandomNumberInRange()
+ *      - #RNG_generateKey()
+ *      - #RNG_generateLEKeyInRange()
+ *      - #RNG_generateBEKeyInRange()
+ *
+ *  HSM (Hardware Security Module) is a HW IP used for RNG operations
+ *
  *  @anchor ti_drivers_RNG_Usage
  *  # Usage #
  *
@@ -71,7 +83,7 @@
  *
  *  @code
  *
- *  // Use the function provided by RCL to read noise input //
+ *  // Use the function provided by RCL to read noise input
  *  extern int_fast16_t RCL_AdcNoise_get_samples_blocking(uint32_t *buffer, uint32_t numWords);
  *
  *  @endcode
@@ -80,28 +92,41 @@
  *
  *  @code
  *
- *  int_fast16_t rclStatus, result;
+ *  int_fast16_t rclStatus, result, i;
 
  *  // User's global array for noise input based on size provided in syscfg //
  *  uint32_t localNoiseInput[]; //Minimum array size 80 words
+ *  uint8_t maxRetries = 4; //Maximum retries to get noise input from RCL
  *
  *   // Clear noise input //
  *  memset(localNoiseInput, 0, sizeof(localNoiseInput));
  *
  *  // Fill noise input from RCL //
- *  //RNGLPF3RF_noiseInputWordLen is external variable from RNGLPF3RF.h
- *   rclStatus = RCL_AdcNoise_get_samples_blocking(localNoiseInput, RNGLPF3RF_noiseInputWordLen);
- *
- *  if (rclStatus != 0)
+ *  // RNGLPF3RF_noiseInputWordLen is external variable from RNGLPF3RF.h
+ *  // Collect noise input from RCL till input has enough entropy.
+ *  for (i = 0; i < maxRetries; i++)
  *  {
- *      //Handle error;
- *  }
+ *      rclStatus = RCL_AdcNoise_get_samples_blocking(localNoiseInput, RNGLPF3RF_noiseInputWordLen);
+ *      if (rclStatus != 0)
+ *      {
+ *          // Handle error
+ *      }
  *
- *  // Initialize the RNG driver noise input pointer with global noise input array from user //
- *  result = RNGLPF3RF_conditionNoiseToGenerateSeed(localNoiseInput);
- *  if ( rclStatus != 0)
- *  {
- *      //Handle error;
+ *      // Initialize the RNG driver noise input pointer with global noise input array from user //
+ *      rclStatus = RNGLPF3RF_conditionNoiseToGenerateSeed(localNoiseInput);
+ *      if ((rclStatus == RNG_STATUS_RCT_FAIL) || (rclStatus == RNG_STATUS_APT_FAIL) ||
+ *          (rclStatus == RNG_STATUS_APT_BIMODAL_FAIL))
+ *      {
+ *          continue; // retry if health checks fail
+ *      }
+ *      else if (rclStatus != 0)
+ *      {
+ *          // Handle error
+ *      }
+ *      else
+ *      {
+ *          break; // break out of loop if success
+ *      }
  *  }
  *
  *  @endcode
@@ -380,18 +405,18 @@ extern "C" {
 /*!
  * @brief Some implementations require a noise input during initialization
  *        which is conditioned to seed the RNG driver. RNG_init() will return this
- *        error if the noise input pointer is not intialized with valid information.
+ *        error if the noise input pointer is not initialized with valid information.
  *        See documentation for the implementation for more information.
  */
 #define RNG_STATUS_NOISE_INPUT_INVALID ((int_fast16_t)-7)
 
 /*!
- * @brief RNG driver not intialized.
+ * @brief RNG driver not initialized.
  *
  * @note Some implementations restrict when RNG_init() may be called.
  *       Refer to #RNG_init() for more information.
  */
-#define RNG_STATUS_NOT_INITIALIZED ((int_fast16_t)-7)
+#define RNG_STATUS_NOT_INITIALIZED ((int_fast16_t)-8)
 
 /*!
  * @brief  Maximum number of bits that may be requested in a single call
@@ -439,6 +464,8 @@ typedef const RNG_Config *RNG_Handle;
  *
  * RNG functions exhibiting the specified return behavior have restrictions on
  * the context from which they may be called.
+ *
+ * @attention: For CC23XX and CC27XX devices, the RNG driver does not support Callback return behavior.
  *
  * |                              | Task  | Hwi   | Swi   |
  * |------------------------------|-------|-------|-------|
@@ -590,7 +617,7 @@ int_fast16_t RNG_init(void);
  *                                            not available. Try again later.
  *  @retval #RNG_ENTROPY_EXHAUSTED            Pool could not be refilled, device
  *                                            may need reset.
- *  @retval #RNG_STATUS_NOT_INITIALIZED       RNG not intialized.
+ *  @retval #RNG_STATUS_NOT_INITIALIZED       RNG not initialized.
  */
 int_fast16_t RNG_fillPoolIfLessThan(size_t bytes);
 
@@ -674,7 +701,7 @@ void RNG_close(RNG_Handle handle);
  *  @retval #RNG_STATUS_INVALID_INPUTS        Inputs provided are not valid.
  *  @retval #RNG_ENTROPY_EXHAUSTED            Requested number of bytes could
  *                                            not be obtained. Device may need reset.
- *  @retval #RNG_STATUS_NOT_INITIALIZED       RNG not intialized.
+ *  @retval #RNG_STATUS_NOT_INITIALIZED       RNG not initialized.
  */
 int_fast16_t RNG_getRandomBits(RNG_Handle handle, void *randomBits, size_t randomBitsLength);
 
@@ -729,7 +756,7 @@ int_fast16_t RNG_getRandomBits(RNG_Handle handle, void *randomBits, size_t rando
  *  @retval #RNG_STATUS_INVALID_INPUTS        Inputs provided are not valid.
  *  @retval #RNG_ENTROPY_EXHAUSTED            Requested number of bytes could
  *                                            not be obtained. Device may need reset.
- *  @retval #RNG_STATUS_NOT_INITIALIZED       RNG not intialized.
+ *  @retval #RNG_STATUS_NOT_INITIALIZED       RNG not initialized.
  */
 int_fast16_t RNG_getLERandomNumberInRange(RNG_Handle handle,
                                           const void *lowerLimit,
@@ -788,7 +815,7 @@ int_fast16_t RNG_getLERandomNumberInRange(RNG_Handle handle,
  *  @retval #RNG_STATUS_INVALID_INPUTS        Inputs provided are not valid.
  *  @retval #RNG_ENTROPY_EXHAUSTED            Requested number of bytes could
  *                                            not be obtained. Device may need reset.
- *  @retval #RNG_STATUS_NOT_INITIALIZED       RNG not intialized.
+ *  @retval #RNG_STATUS_NOT_INITIALIZED       RNG not initialized.
  */
 int_fast16_t RNG_getBERandomNumberInRange(RNG_Handle handle,
                                           const void *lowerLimit,
@@ -825,7 +852,7 @@ int_fast16_t RNG_getBERandomNumberInRange(RNG_Handle handle,
  *  @retval #RNG_STATUS_INVALID_INPUTS        Inputs provided are not valid.
  *  @retval #RNG_ENTROPY_EXHAUSTED            Requested number of bytes could
  *                                            not be obtained. Device may need reset.
- *  @retval #RNG_STATUS_NOT_INITIALIZED       RNG not intialized.
+ *  @retval #RNG_STATUS_NOT_INITIALIZED       RNG not initialized.
  */
 int_fast16_t RNG_generateKey(RNG_Handle handle, CryptoKey *key);
 
@@ -877,7 +904,7 @@ int_fast16_t RNG_generateKey(RNG_Handle handle, CryptoKey *key);
  *  @retval #RNG_STATUS_INVALID_INPUTS        Inputs provided are not valid.
  *  @retval #RNG_ENTROPY_EXHAUSTED            Requested number of bytes could
  *                                            not be obtained. Device may need reset.
- *  @retval #RNG_STATUS_NOT_INITIALIZED       RNG not intialized.
+ *  @retval #RNG_STATUS_NOT_INITIALIZED       RNG not initialized.
  */
 int_fast16_t RNG_generateLEKeyInRange(RNG_Handle handle,
                                       const void *lowerLimit,
@@ -933,7 +960,7 @@ int_fast16_t RNG_generateLEKeyInRange(RNG_Handle handle,
  *  @retval #RNG_STATUS_INVALID_INPUTS        Inputs provided are not valid.
  *  @retval #RNG_ENTROPY_EXHAUSTED            Requested number of bytes could
  *                                            not be obtained. Device may need reset.
- *  @retval #RNG_STATUS_NOT_INITIALIZED       RNG not intialized.
+ *  @retval #RNG_STATUS_NOT_INITIALIZED       RNG not initialized.
  */
 int_fast16_t RNG_generateBEKeyInRange(RNG_Handle handle,
                                       const void *lowerLimit,

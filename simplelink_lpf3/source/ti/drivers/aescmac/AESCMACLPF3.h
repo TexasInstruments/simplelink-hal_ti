@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021-2024, Texas Instruments Incorporated
+ * Copyright (c) 2021-2025, Texas Instruments Incorporated
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -35,10 +35,11 @@
  *  @brief      AESCMAC (CMAC & CBC-MAC) driver implementation for the Low Power F3 family
  *
  * # Hardware Accelerator #
- * The Low Power F3 family of devices has dedicated hardware accelerators.
+ * The Low Power F3 and WiFi F3 families of devices have dedicated hardware accelerators.
  * CC23XX devices have one dedicated accelerator whereas CC27XX devices have two
  * (Primary and Secondary). Combined they can perform AES encryption operations with
- * 128-bit, 192-bit and 256-bit keys. Only one operation can be carried out on the
+ * 128-bit, 192-bit and 256-bit keys. CC35XX devices have only dedicated hardware
+ * accelerator. Only one operation can be carried out on the
  * accelerator at a time. Mutual exclusion is implemented at the driver level and
  * coordinated between all drivers relying on the accelerator. It is transparent to
  * the application and only noted to ensure sensible access timeouts are set.
@@ -71,8 +72,11 @@
 #include <ti/drivers/cryptoutils/sharedresources/CryptoResourceLPF3.h>
 
 #include <ti/devices/DeviceFamily.h>
-#include DeviceFamily_constructPath(inc/hw_types.h)
-#include DeviceFamily_constructPath(driverlib/aes.h)
+
+#if (DeviceFamily_PARENT != DeviceFamily_PARENT_CC35XX)
+    #include DeviceFamily_constructPath(inc/hw_types.h)
+    #include DeviceFamily_constructPath(driverlib/aes.h)
+#endif
 
 #ifdef __cplusplus
 extern "C" {
@@ -80,16 +84,15 @@ extern "C" {
 
 /*
  * Default AES CMAC & CBC-MAC auto config:
- *  ECB SRC as TXTXBUF
- *  Trigger point for auto ECB as WRBUF3 (encryption starts by writing BUF3)
+ *  AES SRC as TXTXBUF
+ *  Trigger point for auto AES as WRBUF3 (encryption starts by writing BUF3)
  *  BUSHALT enabled
  */
-#if DeviceFamily_PARENT == DeviceFamily_PARENT_CC23X0
+#if (DeviceFamily_PARENT == DeviceFamily_PARENT_CC23X0) || (DeviceFamily_PARENT == DeviceFamily_PARENT_CC27XX)
     #define AESCMACLPF3_DEFAULT_AUTOCFG \
         ((uint32_t)AES_AUTOCFG_AESSRC_TXTXBUF | (uint32_t)AES_AUTOCFG_TRGAES_WRBUF3 | (uint32_t)AES_AUTOCFG_BUSHALT_EN)
-#elif DeviceFamily_PARENT == DeviceFamily_PARENT_CC27XX
-    #define AESCMACLPF3_DEFAULT_AUTOCFG \
-        ((uint32_t)AES_AUTOCFG_ECBSRC_TXTXBUF | (uint32_t)AES_AUTOCFG_TRGECB_WRBUF3 | (uint32_t)AES_AUTOCFG_BUSHALT_EN)
+#elif (DeviceFamily_PARENT == DeviceFamily_PARENT_CC35XX)
+    /* Not used for CC35XX */
 #else
     #error "Unsupported DeviceFamily_Parent for AESCMACLPF3!"
 #endif
@@ -97,12 +100,12 @@ extern "C" {
 /*
  * AES CMAC DMA config:
  *  - ADRCHA = BUF0
- *  - TRGCHA = ECBSTART
+ *  - TRGCHA = AESSTART
  */
-#if DeviceFamily_PARENT == DeviceFamily_PARENT_CC23X0
+#if (DeviceFamily_PARENT == DeviceFamily_PARENT_CC23X0) || (DeviceFamily_PARENT == DeviceFamily_PARENT_CC27XX)
     #define AESCMACLPF3_DMA_CONFIG ((uint32_t)AES_DMA_ADRCHA_BUF0 | (uint32_t)AES_DMA_TRGCHA_AESSTART)
-#elif DeviceFamily_PARENT == DeviceFamily_PARENT_CC27XX
-    #define AESCMACLPF3_DMA_CONFIG ((uint32_t)AES_DMA_ADRCHA_BUF0 | (uint32_t)AES_DMA_TRGCHA_ECBSTART)
+#elif (DeviceFamily_PARENT == DeviceFamily_PARENT_CC35XX)
+    /* Not used for CC35XX */
 #else
     #error "Unsupported DeviceFamily_Parent for AESCMACLPF3!"
 #endif
@@ -132,21 +135,23 @@ typedef struct
     AESCMAC_Operation *operation;
     AESCMAC_OperationType operationType;
     AESCMAC_OperationalMode operationalMode;
-    bool threadSafe;
-#if (DeviceFamily_PARENT == DeviceFamily_PARENT_CC27XX)
+#if ((DeviceFamily_PARENT == DeviceFamily_PARENT_CC27XX) || (DeviceFamily_PARENT == DeviceFamily_PARENT_CC35XX))
+    uint8_t *input;
     size_t inputLength;
+    uint32_t tempAssetID;
+    uint32_t keyAssetID;
     /*!
      * @brief The staus of the HSM Boot up process
      * if HSMLPF3_STATUS_SUCCESS, the HSM booted properly.
      * if HSMLPF3_STATUS_ERROR, the HSM did not boot properly.
      */
     int_fast16_t hsmStatus;
-    uint32_t tempAssetID;
-    uint32_t keyAssetID;
     /* To indicate whether a segmented operation is in progress
      */
     bool segmentedOperationInProgress;
+    bool driverCreatedKeyAsset;
 #endif
+    bool threadSafe;
 } AESCMACLPF3_Object;
 
 /*! @cond NODOC */

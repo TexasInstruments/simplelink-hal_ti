@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020-2024, Texas Instruments Incorporated
+ * Copyright (c) 2020-2025, Texas Instruments Incorporated
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -39,29 +39,30 @@ typedef struct RCL_FILTER_LIST_t  RCL_FilterList;
 typedef struct RCL_ADDR_TYPE_t    RCL_AddrType;
 typedef struct RCL_CONN_PARAMS_t  RCL_ConnParams;
 
-typedef struct RCL_CMD_BLE5_ADV_t          RCL_CmdBle5Advertiser;
-typedef struct RCL_CMD_BLE5_AUX_ADV_t      RCL_CmdBle5AuxAdvertiser;
-typedef struct RCL_CMD_BLE5_PER_ADV_t      RCL_CmdBle5PeriodicAdvertiser;
-typedef struct RCL_CMD_BLE5_INITIATOR_t    RCL_CmdBle5Initiator;
-typedef struct RCL_CMD_BLE5_SCANNER_t      RCL_CmdBle5Scanner;
-typedef struct RCL_CMD_BLE5_PER_SCANNER_t  RCL_CmdBle5PeriodicScanner;
-typedef struct RCL_CMD_BLE5_CONNECTION_t   RCL_CmdBle5Connection;
-typedef struct RCL_CMD_BLE5_DTM_TX         RCL_CmdBle5DtmTx;
-typedef struct RCL_CMD_BLE5_GENERIC_RX_t   RCL_CmdBle5GenericRx;
-typedef struct RCL_CMD_BLE5_GENERIC_TX_t   RCL_CmdBle5GenericTx;
-typedef struct RCL_CMD_BLE5_TX_TEST_t      RCL_CmdBle5TxTest;
+typedef struct RCL_CMD_BLE5_ADV_t           RCL_CmdBle5Advertiser;
+typedef struct RCL_CMD_BLE5_AUX_ADV_t       RCL_CmdBle5AuxAdvertiser;
+typedef struct RCL_CMD_BLE5_PER_ADV_t       RCL_CmdBle5PeriodicAdvertiser;
+typedef struct RCL_CMD_BLE5_INITIATOR_t     RCL_CmdBle5Initiator;
+typedef struct RCL_CMD_BLE5_SCANNER_t       RCL_CmdBle5Scanner;
+typedef struct RCL_CMD_BLE5_PER_SCANNER_t   RCL_CmdBle5PeriodicScanner;
+typedef struct RCL_CMD_BLE5_CONNECTION_t    RCL_CmdBle5Connection;
+typedef struct RCL_CMD_BLE5_DTM_TX          RCL_CmdBle5DtmTx;
+typedef struct RCL_CMD_BLE5_GENERIC_RX_t    RCL_CmdBle5GenericRx;
+typedef struct RCL_CMD_BLE5_GENERIC_TX_t    RCL_CmdBle5GenericTx;
+typedef struct RCL_CMD_BLE5_TX_TEST_t       RCL_CmdBle5TxTest;
+typedef struct RCL_CMD_BLE5_CH_ASSESSMENT_t RCL_CmdBle5ChAssessment;
 
-typedef struct RCL_CTX_ADVERTISER_t        RCL_CtxAdvertiser;
-typedef struct RCL_CTX_PER_ADVERTISER_t    RCL_CtxPeriodicAdvertiser;
-typedef struct RCL_CTX_SCAN_INIT_t         RCL_CtxScanInit;
-typedef struct RCL_CTX_PER_SCANNER_t       RCL_CtxPeriodicScanner;
-typedef struct RCL_CTX_CONNECTION_t        RCL_CtxConnection;
-typedef struct RCL_CTX_GENERIC_RX_t        RCL_CtxGenericRx;
-typedef struct RCL_CTX_GENERIC_TX_t        RCL_CtxGenericTx;
+typedef struct RCL_CTX_ADVERTISER_t         RCL_CtxAdvertiser;
+typedef struct RCL_CTX_PER_ADVERTISER_t     RCL_CtxPeriodicAdvertiser;
+typedef struct RCL_CTX_SCAN_INIT_t          RCL_CtxScanInit;
+typedef struct RCL_CTX_PER_SCANNER_t        RCL_CtxPeriodicScanner;
+typedef struct RCL_CTX_CONNECTION_t         RCL_CtxConnection;
+typedef struct RCL_CTX_GENERIC_RX_t         RCL_CtxGenericRx;
+typedef struct RCL_CTX_GENERIC_TX_t         RCL_CtxGenericTx;
 
-typedef struct RCL_STATS_ADV_SCAN_INIT_t   RCL_StatsAdvScanInit;
-typedef struct RCL_STATS_CONNECTION_t      RCL_StatsConnection;
-typedef struct RCL_STATS_GENERIC_RX_t      RCL_StatsGenericRx;
+typedef struct RCL_STATS_ADV_SCAN_INIT_t    RCL_StatsAdvScanInit;
+typedef struct RCL_STATS_CONNECTION_t       RCL_StatsConnection;
+typedef struct RCL_STATS_GENERIC_RX_t       RCL_StatsGenericRx;
 
 /**
  * @brief Type for BLE channels
@@ -93,8 +94,8 @@ typedef union {
         RCL_Ble5_RxPhy phy       :2;     /*!< Received PHY */
         uint8_t crcError         :1;     /*!< True if packet had CRC error */
         uint8_t ignored          :1;     /*!< True if packet was ignored */
-        uint8_t ignoredRpa       :1;     /*!< True if packet should have been ignored due to unknown RPA, but was kept due to rpaMode */
-        uint8_t ignoredSyncInfo  :1;     /*!< True if packet should have been ignored due to unknown RPA, but was kept due to periodicSyncEstablishment */
+        uint8_t ignoredAddr      :1;     /*!< True if packet should have been ignored due to unknown address, but was kept due to addrMode */
+        uint8_t syncInfoOnly     :1;     /*!< True if packet should have been ignored due to unknown RPA, but was kept for periodic Sync Establishment */
         uint8_t reserved         :2;
     };
     uint8_t value;
@@ -123,6 +124,7 @@ typedef union {
 #define RCL_CMDID_BLE5_AUX_ADV                 0x1009U
 #define RCL_CMDID_BLE5_PERIODIC_ADV            0x100AU
 #define RCL_CMDID_BLE5_PERIODIC_SCAN           0x100BU
+#define RCL_CMDID_BLE5_CH_ASSESSMENT           0x100CU
 
 /**
  * @brief Bit mask indicating the use of a custom frequency
@@ -172,7 +174,8 @@ struct RCL_FILTER_LIST_t {
 struct RCL_ADDR_TYPE_t {
     uint8_t peer :1;     /*!< Address type for peer device (0: public. 1: random) */
     uint8_t own :1;      /*!< Address type for this device (0: public. 1: random) */
-    uint8_t reserved: 6; /*!< Reserved, set to 0 */
+    uint8_t scanReq :1;  /*!< Address type to be used when sending a SCAN_REQ or AUX_SCAN_REQ (0: public. 1: random) */
+    uint8_t reserved: 5; /*!< Reserved, set to 0 */
 };
 
 /**
@@ -265,8 +268,8 @@ struct RCL_CTX_ADVERTISER_t {
     RCL_AddrType addrType;              /*!< Address types */
     uint8_t filterPolicy: 2;            /*!< Filter policy */
     uint8_t privIgnMode: 1;             /*!< Privacy ignore mode. 0: Use filter list only when filter policy says. 1: Use filter list to ignore packets with privIgn bit set for all filter policies */
-    uint8_t rpaModePeer: 1;             /*!< RPA mode for peer address. 0: Treat RPA normally. 1: Report packets where advertiser address is an unknown RPA */
-    uint8_t acceptAllRpaConnectInd: 1;  /*!< CONNECT_IND RPA treatment. 0: Treat RPA in InitA normally. 1: Accept all RPA in InitA of CONNECT_IND. */
+    uint8_t addrModePeer: 1;            /*!< Address mode for peer address. 0: Treat address normally. 1: Report packets where the scanner/initiator address is an unknown address */
+    uint8_t acceptAllConnectInd: 1;     /*!< CONNECT_IND treatment. 0: Treat address in InitA based on configuration of addrModePeer. 1: Accept all addresses in InitA of CONNECT_IND. */
 };
 
 #define RCL_CtxAdvertiser_Default() \
@@ -280,8 +283,8 @@ struct RCL_CTX_ADVERTISER_t {
     .addrType =  { 0 },             \
     .filterPolicy = 0,              \
     .privIgnMode = 0,               \
-    .rpaModePeer = 0,               \
-    .acceptAllRpaConnectInd = 0     \
+    .addrModePeer = 0,              \
+    .acceptAllConnectInd = 0     \
 }
 #define RCL_CtxAdvertiser_DefaultRuntime() (RCL_CtxAdvertiser) RCL_CtxAdvertiser_Default()
 
@@ -405,12 +408,12 @@ struct RCL_CTX_SCAN_INIT_t {
     List_List rxBuffers;                  /*!< Linked list of buffers for storing received packets */
     uint16_t ownA[3];                     /*!< Own device address of type %addrType.own */
     uint16_t peerA[3];                    /*!< Initiator: Peer device address of type %addrType.peer */
+    uint16_t scanReqA[3];                 /*!< Scanner: Own device address of type %addrType.scan to be used for SCAN_REQ/AUX_SCAN_REQ. If zero, use ownA. */
     RCL_AddrType addrType;                /*!< Address types */
     uint8_t filterPolicy : 1;             /*!< Filter policy */
     uint8_t scanExtFilterPolicy: 1;       /*!< Extended filter policy for scanners */
-    uint8_t rpaModeOwn: 1;                /*!< RPA mode for own address. 0: Treat RPA normally. 1: Report packets where target address is an unknown RPA */
-    uint8_t rpaModePeer: 1;               /*!< RPA mode for peer address. 0: Treat RPA normally. 1: Report packets where advertiser address is an unknown RPA */
-    uint8_t acceptAllRpaConnectRsp: 1;    /*!< AUX_CONNECT_RSP RPA treatment. 0: Treat RPA in TargetA normally. 1: Accept all RPA in TargetA of AUX_CONNECT_RSP - Not supported in this release */
+    uint8_t addrModePeer: 1;              /*!< Address mode for peer address. 0: Treat address normally. 1: Report packets where advertiser address is an unknown address */
+    uint8_t acceptAllRpaConnectRsp: 1;    /*!< AUX_CONNECT_RSP RPA treatment. 0: Treat RPA in TargetA normally. 1: Accept all RPA in TargetA of AUX_CONNECT_RSP */
     uint8_t periodicSyncEstablishment: 1; /*!< Synchronization to periodic advertisement. 0: Disabled. 1: Report all packets with SyncInfo present */
     uint16_t initialBackoff;              /*!< Initial backoff value */
     uint8_t backoffUpper;                 /*!< Backoff parameter */
@@ -421,7 +424,7 @@ struct RCL_CTX_SCAN_INIT_t {
         uint8_t reserved  : 6;
     } backoffStatus;                      /*!< Backoff parameter */
     uint16_t localClockAccuracy;          /*!< Maximum relative local clock error (in ppm) scaled by 2^26 */
-    RCL_ConnParams *connParams;           /*!< Pointer to connection parameters structure (LE 2M and LE Coded only). LE 1M parameters are provided in the default CONNECT_IND/AUX_CONNECT_REQ */
+    RCL_ConnParams connParams;            /*!< Connection parameters structure (LE 2M and LE Coded only). LE 1M parameters are provided in the default CONNECT_IND/AUX_CONNECT_REQ */
 };
 
 #define RCL_CtxScanInit_Default()   \
@@ -431,18 +434,17 @@ struct RCL_CTX_SCAN_INIT_t {
     .rxBuffers = { 0 },             \
     .ownA = { 0 },                  \
     .peerA = { 0 },                 \
+    .scanReqA = { 0 },              \
     .addrType =  { 0 },             \
     .filterPolicy = 0,              \
     .scanExtFilterPolicy = 0,       \
-    .rpaModeOwn = 0,                \
-    .rpaModePeer = 0,               \
+    .addrModePeer = 0,              \
     .acceptAllRpaConnectRsp = 0,    \
     .periodicSyncEstablishment = 0, \
     .initialBackoff = 1,            \
     .backoffUpper = 0,              \
     .backoffStatus = { 0 },         \
     .localClockAccuracy = 3355,     \
-    .connParams = NULL,             \
 }
 #define RCL_CtxScanInit_DefaultRuntime() (RCL_CtxScanInit) RCL_CtxScanInit_Default()
 
@@ -455,7 +457,9 @@ struct RCL_CMD_BLE5_PER_SCANNER_t {
     RCL_Command common;
     RCL_Ble5Channel channel;       /*!< Channel index */
     RCL_Command_TxPower txPower;   /*!< Transmit power */
-    uint16_t maxAuxPtrWaitTime;    /*!< Maximum time to wait for AuxPtr before ending command (1 us units). 0: No limit */
+    bool perAdvType;               /*!< Periodic advertising type. 0: Without Responses (PA). 1: With Responses (PAwR) */
+    uint16_t maxAuxPtrWaitTime;    /*!< Periodic Advertising: Maximum time to wait for AuxPtr before ending command (1 us units). 0: No limit */
+    uint32_t receivedPktTime;      /*!< Periodic Advertising with Responses: Time of received AUX_SYNC_SUBEVENT_IND or AUX_CONNECT_REQ packet (if connection is formed) */
     RCL_CtxPeriodicScanner *ctx;   /*!< Pointer to context structure */
     RCL_StatsAdvScanInit *stats;   /*!< Pointer to statistics structure */
 };
@@ -466,7 +470,9 @@ struct RCL_CMD_BLE5_PER_SCANNER_t {
                                   RCL_Handler_BLE5_periodicScan),   \
     .channel = 37,                                                  \
     .txPower = {.dBm = 0, .fraction = 0},                           \
+    .perAdvType = 0,                                                \
     .maxAuxPtrWaitTime = 20000,                                     \
+    .receivedPktTime = 0,                                           \
     .ctx = NULL,                                                    \
     .stats = NULL,                                                  \
 }
@@ -478,18 +484,28 @@ struct RCL_CMD_BLE5_PER_SCANNER_t {
  *  Context for periodic scanner command
  */
 struct RCL_CTX_PER_SCANNER_t {
+    List_List txBuffers;                  /*!< Periodic Advertising with Responses: Linked list of packets to transmit (Only for AUX_CONNECT_RSP PDUs) */
     List_List rxBuffers;                  /*!< Linked list of buffers for storing received packets */
-    uint16_t localClockAccuracy;          /*!< Maximum relative local clock error (in ppm) scaled by 2^26 */
+    uint16_t ownA[3];                     /*!< Periodic Advertising with Responses: Own device address of type %addrType.own */
+    uint16_t peerA[3];                    /*!< Periodic Advertising with Responses: Advertiser that initiates connection: Peer device address of type %addrType.peer */
+    RCL_AddrType addrType;                /*!< Periodic Advertising with Responses: Address types */
+    uint16_t localClockAccuracy;          /*!< Periodic Advertising: Maximum relative local clock error (in ppm) scaled by 2^26 (used for window widening) */
     uint32_t accessAddress;               /*!< Access address */
     uint32_t crcInit;                     /*!< CRC initialization value (24 bits) */
+    uint8_t acceptAllConnectInd;          /*!< Periodic Advertising with Responses: AUX_CONNECT_REQ treatment. 1: Accept all addresses in InitA of AUX_CONNECT_REQ. */
 };
 
 #define RCL_CtxPeriodicScanner_Default()   \
 {                                          \
+    .txBuffers = { 0 },                    \
     .rxBuffers = { 0 },                    \
+    .ownA = { 0 },                         \
+    .peerA = { 0 },                        \
+    .addrType = { 0 },                     \
     .localClockAccuracy = 3355,            \
     .accessAddress = 0,                    \
     .crcInit = 0,                          \
+    .acceptAllConnectInd = 1,              \
 }
 #define RCL_CtxPeriodicScanner_DefaultRuntime() (RCL_CtxPeriodicScanner) RCL_CtxPeriodicScanner_Default()
 
@@ -677,6 +693,7 @@ struct RCL_CTX_GENERIC_RX_t {
     uint32_t  accessAddress;   /*!< Access address */
     uint32_t  crcInit;         /*!< CRC initialization value (24 bits) */
     uint8_t   maxPktLen;       /*!< Maximum payload length of received packets */
+    uint8_t   maxPkts;         /*!< Maximum number of packets to be received before closing the Rx window. 0: Do not stop command based on received packets */
     struct {
         uint8_t  repeated: 1;         /*!< 0: End after receiving one packet. 1: Go back to sync search after receiving. */
         uint8_t  disableSync: 1;      /*!< 0: Listen for sync 1: Do not listen for sync */
@@ -690,6 +707,8 @@ struct RCL_CTX_GENERIC_RX_t {
     .rxBuffers = { 0 },             \
     .accessAddress = 0x71764129U,   \
     .crcInit = 0x555555,            \
+    .maxPktLen = 255,               \
+    .maxPkts = 0,                   \
     .config = {                     \
         .repeated = 1,              \
         .disableSync = 0,           \
@@ -804,5 +823,28 @@ struct RCL_CMD_BLE5_TX_TEST_t {
 #define RCL_CMD_BLE5_WH_MODE_PRBS9    1 /*!< config.whitenMode: PRBS-9  */
 #define RCL_CMD_BLE5_WH_MODE_PRBS15   2 /*!< config.whitenMode: PRBS-15 */
 #define RCL_CMD_BLE5_WH_MODE_PRBS32   3 /*!< config.whitenMode: PRBS-32 */
+
+
+/**
+ *  @brief Channel Assessment command
+ *
+ *  Command to assess if a BLE channel is idle or busy
+ */
+struct RCL_CMD_BLE5_CH_ASSESSMENT_t {
+    RCL_Command common;
+    RCL_Ble5Channel channel;       /*!< Channel index */
+    int8_t assessmentThreshold;    /*!< RSSI threshold for channel assessment in dBm */
+    uint16_t assessmentDuration;   /*!< Active measuring time in 0.25 us steps */
+};
+
+#define RCL_CmdBle5ChAssessment_Default()                                   \
+{                                                                           \
+    .common = RCL_Command_Default(RCL_CMDID_BLE5_CH_ASSESSMENT,             \
+                                  RCL_Handler_BLE5_ChannelAssessment),      \
+    .channel = 37,                                                          \
+    .assessmentThreshold = -70,                                             \
+    .assessmentDuration = 400,                                              \
+}
+#define RCL_CmdBle5ChAssessment_DefaultRuntime() (RCL_CmdBle5ChAssessment) RCL_CmdBle5ChAssessment_Default()
 
 #endif

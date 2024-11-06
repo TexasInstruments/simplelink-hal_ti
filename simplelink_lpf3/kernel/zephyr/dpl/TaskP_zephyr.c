@@ -19,6 +19,16 @@
 #include <ti/drivers/dpl/ClockP.h>
 #include <ti/drivers/dpl/HwiP.h>
 
+#ifdef TaskP_STRUCT_SIZE
+#undef TaskP_STRUCT_SIZE
+#endif
+#define TaskP_STRUCT_SIZE (160)
+
+#ifdef TaskP_DEFAULT_STACK_SIZE
+#undef TaskP_DEFAULT_STACK_SIZE
+#endif
+#define TaskP_DEFAULT_STACK_SIZE (CONFIG_DYNAMIC_THREAD_STACK_SIZE)
+
 #if (defined(CONFIG_DYNAMIC_DPL_OBJECTS) && defined(CONFIG_DYNAMIC_THREAD) && defined(CONFIG_DYNAMIC_THREAD_ALLOC) && defined(CONFIG_THREAD_STACK_INFO))
     #define DYNAMIC_THREADS
 #endif
@@ -94,17 +104,17 @@ TaskP_Handle TaskP_create(TaskP_Function fxn, const TaskP_Params *params)
 
         /* TaskP uses inversed priority to Zephyr */
         task_tid = k_thread_create(task, task_stack,
-                            K_THREAD_STACK_SIZEOF(task_stack),
+                            params->stackSize,
                             (k_thread_entry_t) fxn,
                             params->arg, NULL, NULL,
                             (0 - params->priority), 0, K_NO_WAIT);
         if(task_tid != NULL)
         {
             k_thread_name_set(task_tid, params->name);
+            return ((TaskP_Handle)task);
         }
     }
-
-    return ((TaskP_Handle)task);
+    return NULL;
 }
 
 /*
@@ -150,9 +160,9 @@ TaskP_Handle TaskP_construct(TaskP_Struct *obj, TaskP_Function fxn, const TaskP_
     if(task_tid != NULL)
     {
         k_thread_name_set(task_tid, params->name);
+        return ((TaskP_Handle) obj);
     }
-
-    return ((TaskP_Handle) obj);
+    return NULL;
 }
 
 /*
@@ -244,4 +254,9 @@ void TaskP_yield(void)
 uint32_t TaskP_getTaskObjectSize(void)
 {
     return (sizeof(struct k_thread));
+}
+
+void TaskP_setTaskResourcePool(struct k_heap *heap)
+{
+    k_thread_heap_assign(k_current_get(), heap);
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021-2023, Texas Instruments Incorporated
+ * Copyright (c) 2021-2024, Texas Instruments Incorporated
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -73,6 +73,29 @@ extern "C" {
 #define AESCommonLPF3_DMA_CHA_BITMASK ((uint32_t)1U << DMA_CH4)
 /* DMA Channel 5 is reserved for AES Channel B (output) */
 #define AESCommonLPF3_DMA_CHB_BITMASK ((uint32_t)1U << DMA_CH5)
+
+/* Max key length supported by HSM - needed for KeyStore material retrieval */
+#define AESCommonLPF3_256_KEY_LENGTH_BYTES (256U / 8U)
+
+#if (DeviceFamily_PARENT == DeviceFamily_PARENT_CC35XX)
+    /* For CC27XX and CC23XX devices, below AES defines come from driverlib headers.
+     * For CC35XX devices, driverlib does NOT contain these defines.
+     * So, below defines are added.
+     */
+    #define AES_BLOCK_SIZE                          16U //!< Block size in number of bytes
+    #define AES_BLOCK_SIZE_WORDS                    (AES_BLOCK_SIZE / 4U)
+    #define AES_BLOCK_SIZE_MULTIPLE_MASK            0xFFFFFFF0U
+    #define AES_BLOCK_SIZE_MULTIPLE_LENGTH(len)     ((len)&AES_BLOCK_SIZE_MULTIPLE_MASK)
+    #define AES_NON_BLOCK_SIZE_MULTIPLE_MASK        0x0000000FU
+    #define AES_NON_BLOCK_SIZE_MULTIPLE_LENGTH(len) ((len)&AES_NON_BLOCK_SIZE_MULTIPLE_MASK)
+
+    #define AES_IV_LENGTH_BYTES  AES_BLOCK_SIZE
+    #define AES_TAG_LENGTH_BYTES AES_BLOCK_SIZE
+
+    #define AES_128_KEY_LENGTH_BYTES (128U / 8U)
+
+    #define IS_WORD_ALIGNED(ptr) (((uintptr_t)(ptr) << 30) == 0U)
+#endif
 
 /*!
  *  @brief      AESCommonLPF3 Hardware Attributes

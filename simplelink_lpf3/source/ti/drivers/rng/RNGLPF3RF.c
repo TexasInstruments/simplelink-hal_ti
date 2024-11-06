@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021-2023, Texas Instruments Incorporated
+ * Copyright (c) 2021-2025, Texas Instruments Incorporated
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -54,6 +54,12 @@ extern uint8_t RNG_instancePool[];
 
 extern const RNG_ReturnBehavior RNGLPF3RF_returnBehavior;
 
+extern const bool RNGLPF3RF_rctEnabled;
+extern const bool RNGLPF3RF_aptEnabled;
+extern const int RNGLPF3RF_rctThreshold;
+extern const int RNGLPF3RF_aptThreshold;
+extern const int RNGLPF3RF_aptBimodalThreshold;
+
 /* CBC MAC key words used to compute RNG seed */
 extern uint32_t RNGLPF3RF_noiseConditioningKeyWord0;
 extern uint32_t RNGLPF3RF_noiseConditioningKeyWord1;
@@ -67,8 +73,12 @@ typedef bool (*RNGLPF3RF_validator)(RNGLPF3RF_OperationParameters *opParams);
 /* Mask used to extract the upper or lower byte of a word */
 #define BYTE_MASK 0xff
 
-/*
- * These values are used with the validator function prototype to provide potentially relevant parameters
+/* Window size for Adaptive Proportion Test */
+#define RNG_APT_WINDOW_SIZE 512
+
+#define RNG_MAX_RESEED_INTERVAL UINT32_MAX
+
+/* These values are used with the validator function prototype to provide potentially relevant parameters
  * for validation after a candidate number has been generated.
  */
 struct RNGLPF3RF_OperationParameters_
@@ -110,6 +120,8 @@ static int_fast16_t RNGLPF3RF_getValidatedNumber(RNG_Handle handle,
                                                  const void *upperLimit);
 static int_fast16_t RNGLPF3RF_createDRBGInstance(void);
 static int_fast16_t RNGLPF3RF_conditionNoise(uint32_t *noiseInput, uint32_t *seed);
+static void RNGLPF3RF_addCodesToAptDensities(uint16_t codes, volatile uint16_t *densities);
+static int_fast16_t RNGLPF3RF_entropyHealthTests(uint32_t *noiseData);
 
 /*
  *  ======== RNGLPF3RF_translateDRBGStatus ========
@@ -178,8 +190,7 @@ static int_fast16_t RNGLPF3RF_fillPoolIfLessThan(size_t bytes)
 
     if (RNGLPF3RF_instanceData.poolLevel < bytes)
     {
-        /*
-         * Adjust poolLevel to ensure word alignment as underlying AES
+        /* Adjust poolLevel to ensure word alignment as underlying AES
          * driver may only support output to word aligned addresses.
          */
         RNGLPF3RF_instanceData.poolLevel = (RNGLPF3RF_instanceData.poolLevel >> 2u) << 2u;
@@ -205,7 +216,7 @@ static int_fast16_t RNGLPF3RF_fillPoolIfLessThan(size_t bytes)
  * Updates bytesRemaining to fulfill the total request (rounded up from number of bits remaining.)
  * These will have to be generated since these additional bytes could not be copied from the pool.
  *
- * Postcondition: If dest is not word aligned, then bytesRemaining  will either be 0 or dest[byteSize-bytesRemaining]
+ * Postcondition: If dest is not word aligned, then bytesRemaining will either be 0 or dest[byteSize-bytesRemaining]
  *                will be word aligned.
  */
 /*
@@ -213,13 +224,17 @@ static int_fast16_t RNGLPF3RF_fillPoolIfLessThan(size_t bytes)
  */
 static int_fast16_t RNGLPF3RF_getEntropyFromPool(void *dest, size_t byteSize, size_t *bytesRemaining)
 {
+    int_fast16_t returnValue       = RNG_STATUS_SUCCESS;
+    size_t bytesToCopy             = byteSize;
+    size_t nonWordAlignedDestBytes = (uintptr_t)dest & 0x3u;
 
-    uint8_t *byteDest        = (uint8_t *)dest;
-    size_t bytesToCopy       = byteSize;
-    int_fast16_t returnValue = RNG_STATUS_SUCCESS;
-
-    if (RNGLPF3RF_instanceData.poolLevel < byteSize && ((uintptr_t)dest & 0x3u) != 0u &&
-        RNGLPF3RF_instanceData.poolLevel < (4 - ((uintptr_t)dest & 0x3u)))
+    /* Fill the entropy pool if:
+     * 1. The `poolLevel` is less than number of bytes requested.
+     * 2. The `dest` pointer is not aligned to a 4-byte boundary.
+     * 3. The `poolLevel` is less than the number of bytes needed to align `dest` to the next 4-byte boundary.
+     */
+    if ((RNGLPF3RF_instanceData.poolLevel < byteSize) && (nonWordAlignedDestBytes != 0u) &&
+        (RNGLPF3RF_instanceData.poolLevel < (4u - nonWordAlignedDestBytes)))
     {
         /* Fill pool so there will be enough entropy to get to an aligned address within dest[]. */
         returnValue = RNGLPF3RF_fillPoolIfLessThan(RNG_poolByteSize);
@@ -227,18 +242,20 @@ static int_fast16_t RNGLPF3RF_getEntropyFromPool(void *dest, size_t byteSize, si
 
     if (RNGLPF3RF_instanceData.poolLevel < byteSize)
     {
-        /*
-         * Cap number of bytes taken from pool to ensure next byte of entropy to generate into dest
+        /* Cap number of bytes taken from pool to ensure next byte of entropy to generate into dest
          * is at a word-aligned address.
          */
-        bytesToCopy = (4 - ((uintptr_t)dest & 0x3u));
+        bytesToCopy = (4 - nonWordAlignedDestBytes);
         bytesToCopy = bytesToCopy + (((RNGLPF3RF_instanceData.poolLevel - bytesToCopy) >> 2u) << 2u);
     }
 
-    /* Get entropy from pool */
-    if ((bytesToCopy > 0u) && (RNGLPF3RF_instanceData.poolLevel > 0u))
+    /* Get entropy from pool. The conditional check for (RNGLPF3RF_instanceData.poolLevel >= bytesToCopy) is needed
+     * to resolve GCC "warning: 'memcpy' specified bound 4294967295 exceeds maximum object size 2147483647"
+     */
+    if ((bytesToCopy > 0u) && (RNGLPF3RF_instanceData.poolLevel > 0u) &&
+        (RNGLPF3RF_instanceData.poolLevel >= bytesToCopy))
     {
-        (void)memcpy(byteDest, &RNG_instancePool[RNGLPF3RF_instanceData.poolLevel - bytesToCopy], bytesToCopy);
+        (void)memcpy(dest, &RNG_instancePool[RNGLPF3RF_instanceData.poolLevel - bytesToCopy], bytesToCopy);
         CryptoUtils_memset(&RNG_instancePool[RNGLPF3RF_instanceData.poolLevel - bytesToCopy],
                            RNG_poolByteSize,
                            0,
@@ -277,9 +294,9 @@ static int_fast16_t RNGLPF3RF_getValidatedNumber(RNG_Handle handle,
     int_fast16_t returnValue = RNG_STATUS_SUCCESS;
     RNGLPF3RF_Object *object;
     size_t bytesToGenerate = 0;
-    size_t byteSize = 0;
-    uint8_t *byteDestination = NULL;
-    uint8_t bitMask = 0;
+    size_t byteSize;
+    uint8_t *byteDestination;
+    uint8_t bitMask;
     bool isValid = false;
     RNGLPF3RF_OperationParameters opParams;
 
@@ -300,8 +317,7 @@ static int_fast16_t RNGLPF3RF_getValidatedNumber(RNG_Handle handle,
 
     if (returnValue == RNG_STATUS_SUCCESS)
     {
-        /*
-         * Convert bit length to byte size by rounding up the number of bytes.
+        /* Convert bit length to byte size by rounding up the number of bytes.
          * Mask the extra bits from rounding up written in the destination buffer.
          */
         byteSize        = (randomNumberBitLength + 7u) >> 3u;
@@ -374,6 +390,7 @@ static int_fast16_t RNGLPF3RF_createDRBGInstance(void)
     /* Ensure seed length will be 32 bytes long. (Seed length = key length + AES block length.) */
     drbgParams.keyLength      = AESCTRDRBG_AES_KEY_LENGTH_128;
     drbgParams.returnBehavior = (AESCTRDRBG_ReturnBehavior)RNGLPF3RF_returnBehavior;
+    drbgParams.reseedInterval = RNG_MAX_RESEED_INTERVAL;
 
     drbgHandle = AESCTRDRBG_construct((AESCTRDRBG_Handle)&RNGLPF3RF_instanceData.drbgConfig, &drbgParams);
 
@@ -436,6 +453,16 @@ static int_fast16_t RNGLPF3RF_conditionNoise(uint32_t *noiseInput, uint32_t *see
     if (noiseFilled)
     {
         return RNG_STATUS_NOISE_INPUT_INVALID;
+    }
+
+    if (RNGLPF3RF_rctEnabled || RNGLPF3RF_aptEnabled)
+    {
+        /* Health check before conditioning */
+        returnValue = RNGLPF3RF_entropyHealthTests(noiseInput);
+        if (returnValue != RNG_STATUS_SUCCESS)
+        {
+            return returnValue;
+        }
     }
 
     rawData       = (uint8_t *)noiseInput;
@@ -514,7 +541,9 @@ int_fast16_t RNGLPF3RF_conditionNoiseToGenerateSeed(uint32_t *noisePtr)
 {
     int_fast16_t returnValue = RNG_STATUS_SUCCESS;
     int_fast16_t drbgResult;
-    uint32_t seed[256 / 32]; /* Seed is SHA256 Digest: 256 bits */
+    /* Seed length = key length + AES block length */
+    uint32_t seed[(AESCTRDRBG_AES_KEY_LENGTH_128 + AESCTRDRBG_AES_BLOCK_SIZE_BYTES) / 4];
+
     if (RNGLPF3RF_isSeeded == false)
     {
         RNGLPF3RF_instanceData.poolLevel = 0;
@@ -603,8 +632,7 @@ RNG_Handle RNG_construct(const RNG_Config *config, const RNG_Params *params)
         }
         else
         {
-            /*
-             * Return behavior is set statically for all instances and on open the requesting setting must
+            /* Return behavior is set statically for all instances and on open the requesting setting must
              * match the static setting.
              */
             if (params->returnBehavior != RNGLPF3RF_returnBehavior)
@@ -612,9 +640,7 @@ RNG_Handle RNG_construct(const RNG_Config *config, const RNG_Params *params)
                 handle = NULL;
             }
 
-            /*
-             * Callback return behavior is not supported.
-             */
+            /* Callback return behavior is not supported */
             if (params->returnBehavior == RNG_RETURN_BEHAVIOR_CALLBACK)
             {
                 handle = NULL;
@@ -701,17 +727,12 @@ int_fast16_t RNG_generateKey(RNG_Handle handle, CryptoKey *key)
     uint8_t *randomBits;
     size_t randomBitsLength;
 
-    if (key->encoding != CryptoKey_BLANK_PLAINTEXT)
+    if ((key == NULL) || (key->encoding != CryptoKey_BLANK_PLAINTEXT) ||
+        (key->u.plaintext.keyLength > (RNG_MAX_BIT_LENGTH >> 3u)))
     {
         returnValue = RNG_STATUS_INVALID_INPUTS;
     }
-
-    if (key->u.plaintext.keyLength > (RNG_MAX_BIT_LENGTH >> 3u))
-    {
-        returnValue = RNG_STATUS_INVALID_INPUTS;
-    }
-
-    if (returnValue == RNG_STATUS_SUCCESS)
+    else
     {
         randomBits       = key->u.plaintext.keyMaterial;
         randomBitsLength = key->u.plaintext.keyLength << 3u; /* Bytes to bits */
@@ -740,13 +761,12 @@ int_fast16_t RNG_generateLEKeyInRange(RNG_Handle handle,
     int_fast16_t returnValue;
     uint8_t *randomBits;
 
-    if (key->encoding != CryptoKey_BLANK_PLAINTEXT)
+    if ((key == NULL) || (key->encoding != CryptoKey_BLANK_PLAINTEXT))
     {
         returnValue = RNG_STATUS_INVALID_INPUTS;
     }
     else
     {
-
         randomBits = key->u.plaintext.keyMaterial;
 
         returnValue = RNGLPF3RF_getValidatedNumber(handle,
@@ -773,7 +793,7 @@ int_fast16_t RNG_generateBEKeyInRange(RNG_Handle handle,
     int_fast16_t returnValue;
     uint8_t *randomBits;
 
-    if (key->encoding != CryptoKey_BLANK_PLAINTEXT)
+    if ((key == NULL) || (key->encoding != CryptoKey_BLANK_PLAINTEXT))
     {
         returnValue = RNG_STATUS_INVALID_INPUTS;
     }
@@ -821,4 +841,205 @@ int_fast16_t RNG_cancelOperation(RNG_Handle handle)
 {
     /* Cancel not supported in this implementation since AESCTRDRBG driver does not support cancellation. */
     return RNG_STATUS_ERROR;
+}
+
+/*
+ *  ======== addCodesToAPTDensities ========
+ */
+static void RNGLPF3RF_addCodesToAptDensities(uint16_t codes, volatile uint16_t *densities)
+{
+    /* Counts a set of three codes in the densities array. */
+    for (uint_fast8_t i = 0U; i < 3U; i++)
+    {
+        uint8_t code = codes & 0x0F;
+        densities[code]++;
+        codes >>= 5;
+    }
+}
+
+/*!
+ * @brief Runs Repetitive Count Tests (RCT).
+ *
+ * Each word is assumed to contain 3 IA Codes (IAC) and 3 QA Codes (QAC).
+ * Each group of codes (IAC and QAC) are treated independently for the purpose of this test.
+ *
+ * For efficiency, each group of 3 codes is compared to the last group of
+ * three codes (the 3 new IACs are compared to the last 3 IACs in one
+ * comparison operation, same for the QACs).
+ *
+ * @param lastWord          is the previous word from noise data
+ * @param newWord           is the current word from noise data.
+ * @param countRepeatedIac  the current count of repeated IAC codes.
+ * @param countRepeatedQac  the current count of repeated QAC codes.
+ *
+ * @retval #RNG_STATUS_RCT_FAIL                  RCT Failed
+ * @retval #RNG_STATUS_SUCCESS                   RCT Passed
+ *
+ */
+/*
+ *  ======== executeRCT ========
+ */
+static inline int_fast16_t RNGLPF3RF_executeRct(uint32_t lastWord,
+                                                uint32_t newWord,
+                                                size_t *countRepeatedIac,
+                                                size_t *countRepeatedQac)
+{
+    if (((newWord ^ lastWord) & 0x0000FFFF) != 0U)
+    {
+        *countRepeatedQac = 0U;
+    }
+    else
+    {
+        (*countRepeatedQac)++;
+
+        if (*countRepeatedQac >= RNGLPF3RF_rctThreshold)
+        {
+            return RNG_STATUS_RCT_FAIL;
+        }
+    }
+
+    if (((newWord ^ lastWord) & 0xFFFF0000) != 0U)
+    {
+        *countRepeatedIac = 0U;
+    }
+    else
+    {
+        (*countRepeatedIac)++;
+
+        if (*countRepeatedIac >= RNGLPF3RF_rctThreshold)
+        {
+            return RNG_STATUS_RCT_FAIL;
+        }
+    }
+    return RNG_STATUS_SUCCESS;
+}
+
+/*!
+ * @brief Runs Adaptive Proportion Tests (APT).
+ *
+ * These tests are a modified version of the test described in NIST SP 800-90B.
+ * This implementation is more conservative than the implementation described in
+ * the NIST document. The NIST specification only considers a single code value
+ * within a window of 512 values. This test considers all code values
+ * within that window (or slightly more since codes are loaded in
+ * 6 code sequences). Thus, this implementation is more likely
+ * to detect a failure of the entropy source than the NIST specified
+ * test.
+ *
+ * In addition, this test also considers a bimodal threshold to
+ * detect instances where the entropy source is cycling between
+ * two distinct code values such that the two values are much
+ * more common in the sequence that expected.
+ *
+ * @param densities is a collection of 4-bit code counts over a 512 (+ 5) code window.
+ *
+ * @retval #RNG_STATUS_APT_FAIL                  APT Failed
+ * @retval #RNG_STATUS_APT_BIMODAL_FAIL          APT Bimodal Failed
+ * @retval #RNG_STATUS_SUCCESS                   Both APT and APT Bimodal passed
+ */
+/*
+ *  ======== executeAPT ========
+ */
+static inline int_fast16_t RNGLPF3RF_executeApt(volatile uint16_t *densities)
+{
+    uint8_t populationsAboveBimodalLimit = 0U;
+
+    for (uint_fast8_t j = 0U; j < 16U; j++)
+    {
+        if (densities[j] > RNGLPF3RF_aptThreshold)
+        {
+            return RNG_STATUS_APT_FAIL;
+        }
+
+        if (densities[j] > RNGLPF3RF_aptBimodalThreshold)
+        {
+            if (populationsAboveBimodalLimit > 0U)
+            {
+                return RNG_STATUS_APT_BIMODAL_FAIL;
+            }
+            else
+            {
+                populationsAboveBimodalLimit++;
+            }
+        }
+        densities[j] = 0;
+    }
+
+    return RNG_STATUS_SUCCESS;
+}
+
+/*!
+ * @brief Performs Health Checks on the noise buffer from RCL before conditioning.
+ *
+ * This function performs 2 Health Checks - Repetitive Count Test (RCT) and Adaptive Proportion Test (APT).
+ * These tests are a modified version of the tests described in NIST SP 800-90B. RCT is performed if
+ * RNGLPF3RF_rctEnabled is true and apt is performed if RNGLPF3RF_aptEnabled is true
+ *
+ * The noiseData should not be used if this function returns an error code.
+ *
+ * @param  noiseData A pointer to the buffer containing noise input from RCL
+ *                      A word of input noise data follows the following format
+ *                      Bit 31: 0
+ *                      Bit 30..26: 5-bit I Arithmetic Code Reading X+2
+ *                      Bit 25..21: 5-bit I Arithmetic Code Reading X+1
+ *                      Bit 20..16: 5-bit I Arithmetic Code Reading X
+ *                      Bit 15: 0
+ *                      Bit 14..10: 5-bit Q Arithmetic Code X+2
+ *                      Bit  9..5 :  5-bit Q Arithmetic Code X+1
+ *                      Bit  4..0 :  5-bit Q Arithmetic Code X
+ *
+ * @retval #RNG_STATUS_RCT_FAIL                  RCT Failed, making the noise input invalid
+ * @retval #RNG_STATUS_APT_FAIL                  APT Failed, making the noise input invalid
+ * @retval #RNG_STATUS_APT_BIMODAL_FAIL          APT Bimodal Failed, making the noise input invalid
+ * @retval #RNG_STATUS_SUCCESS                   All Health Checks passed, making the noise input valid
+ */
+static int_fast16_t RNGLPF3RF_entropyHealthTests(uint32_t *noiseData)
+{
+    volatile uint16_t densities[32];
+    uint32_t newWord;
+    uint16_t iaCodes;
+    uint16_t qaCodes;
+    int_fast16_t returnValue   = RNG_STATUS_SUCCESS;
+    size_t numCodesInAptWindow = 0U;
+    size_t countRepeatedIac    = 0U;
+    size_t countRepeatedQac    = 0U;
+    uint32_t lastWord          = 0xFFFFFFFF;
+
+    memset((void *)densities, 0x0, 32 * sizeof(uint16_t));
+
+    for (size_t i = 0U; i < RNGLPF3RF_noiseInputWordLen; i++)
+    {
+        newWord = noiseData[i];
+
+        if (RNGLPF3RF_rctEnabled)
+        {
+            returnValue = RNGLPF3RF_executeRct(lastWord, newWord, &countRepeatedIac, &countRepeatedQac);
+            if (returnValue != RNG_STATUS_SUCCESS)
+            {
+                return returnValue;
+            }
+            lastWord = newWord;
+        }
+
+        if (RNGLPF3RF_aptEnabled)
+        {
+            qaCodes = newWord & 0xFFFF;
+            RNGLPF3RF_addCodesToAptDensities(qaCodes, densities);
+            iaCodes = newWord >> 16;
+            RNGLPF3RF_addCodesToAptDensities(iaCodes, densities);
+
+            numCodesInAptWindow += 6U;
+
+            if (numCodesInAptWindow >= RNG_APT_WINDOW_SIZE)
+            {
+                returnValue = RNGLPF3RF_executeApt(densities);
+                if (returnValue != RNG_STATUS_SUCCESS)
+                {
+                    return returnValue;
+                }
+                numCodesInAptWindow = 0U;
+            }
+        }
+    }
+    return returnValue;
 }
