@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021-2024, Texas Instruments Incorporated
+ * Copyright (c) 2021-2025, Texas Instruments Incorporated
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -49,10 +49,6 @@
  * Register value to be written to registers, prior to temperature compensation
  */
 #ifdef DeviceFamily_CC27XX
-/* TODO: See RCL-556 */
-#define LRFDPBE32_BASE          0x40081400 // LRFDPBE32
-#define LRFDMDM32_BASE          0x40082400 // LRFDMDM32
-#define LRFDRFE32_BASE          0x40083400 // LRFDRFE32
 typedef union
 {
     struct {
@@ -60,7 +56,8 @@ typedef union
         uint16_t ib: 6;
         uint16_t gain: 3;
         uint16_t mode: 2;
-        uint16_t reserved: 2;
+        uint16_t rtrimTxCompCtl: 1;
+        uint16_t pa20dBmEsdCtl: 1;
         uint16_t noIfampRfLdoBypass: 1;
     };
     uint16_t rawValue;
@@ -130,7 +127,6 @@ union LRF_Events_u {
         uint32_t rxCtrl              : 1; /*!< LL control packet received correctly */
         uint32_t rxCtrlAck           : 1; /*!< LL control packet received with CRC OK, not to be ignored, then acknowledgement sent */
         uint32_t rxNok               : 1; /*!< Packet received with CRC error */
-
         uint32_t rxIgnored           : 1; /*!< Packet received, but may be ignored by MCU */
         uint32_t rxEmpty             : 1; /*!< Empty packet received */
         uint32_t rxBufFull           : 1; /*!< Packet received which did not fit in the RX FIFO and was not to be discarded.  */
@@ -207,6 +203,26 @@ typedef struct {
     LRF_TxPowerTable_Entry powerTable[];
 } LRF_TxPowerTable;
 
+/**
+ * @brief Single entry of the Tx power limit table.
+ */
+typedef struct {
+    uint16_t minFreq;                        /*!< Start of frequency range */
+    uint16_t maxFreq;                        /*!< End of frequency range. Single frequency specified by maxFreq = minFreq */
+    uint8_t regulatoryMask;                  /*!< Regulatory domain mask */
+    LRF_TxPowerTable_Index maxTxPower;       /*!< Max power level for frequency in range [minFreq,maxFreq] */
+} LRF_TxPowerLimitTable_Entry;
+
+/**
+ * @brief Tx power limit table, containing frequency dependent power limits for specific
+ * regulatory domain
+ */
+typedef struct {
+    uint32_t numEntries;                             /*!< Number of entries in the table*/
+    uint32_t freqDiv;                                /*!< Frequency divisor. Used to determine the prefix of the frequency in the table */
+    LRF_TxPowerLimitTable_Entry limitTable[];        /*!< Table with frequency specific power limits */
+} LRF_TxPowerLimitTable;
+
 typedef struct LRF_TxShape_s {
     struct {
         uint32_t      scale    :17;
@@ -215,33 +231,56 @@ typedef struct LRF_TxShape_s {
     uint8_t       coeff[];
 } LRF_TxShape;
 
-#define LRF_TRIM_NUM_VARIANTS 2
-#define LRF_TRIM_NORMAL_BW    0
-#define LRF_TRIM_HIGH_BW      1                 /* Revision >= 4 only */
-
-#define LRF_TRIM_MIN_VERSION_FULL_FEATURES  4    /* Only AppTrims revision 4 and above has all features */
-
-/* RCL-335: Some CC23X0R5 devices (State D) have an error in the programmed RSSI offset */
-#define LRF_TRIM_VERSION_RSSIOFFSET_ISSUE_CC23X0R5 4     /* AppTrims revision with issue in rssiOffset field */
-#define LRF_TRIM_LIMIT_RSSIOFFSET_ISSUE_CC23X0R5  (-4)   /* If rssiOffset is less or equal to this, apply correction */
-#define LRF_TRIM_CORRECTION_RSSIOFFSET_ISSUE_CC23X0R5 5  /* Correction to apply to devices with wrong RSSI offset */
-
-#define LRF_TRIM_VERSION_STATE_C_TRIM_WORKAROUND_CC27XX 7U                /* AppTrims revision of CC27XX devices in state C and beyond */
-/* RCL-591: RTRIM is hardcoded to 10 for CC27XX state B devices */
-#define LRF_TRIM_RTRIM_VALUE_STATE_B_RTRIM_WORKAROUND_CC27XX 10U          /* RTRIM value used on CC27XX state B devices */
-/* RCL-616: DCOLDO0:FIRSTTRIM is hardcoded to 8 and DCOLDO0:SECONDTRIM is increased by 10 for CC27XX state B devices */
-#define LRF_TRIM_DCOLDO0_FIRSTTRIM_VALUE_STATE_B_DCOLDO_WORKAROUND_CC27XX 8U    /* DCOLDO0:FIRSTTRIM value used on CC27XX state B devices */
-#define LRF_TRIM_DCOLDO0_SECONDTRIM_INC_STATE_B_DCOLDO_WORKAROUND_CC27XX 10U    /* DCOLDO0:SECONDTRIM needs to be increased by 10 on CC27XX state B devices */
-#define LRF_TRIM_DCOLDO0_SECONDTRIM_CODED_BITS_MASK_STATE_B_DCOLDO_WORKAROUND_CC27XX ((1U << 3U) | (1U << 5U))    /* Bits mask for bit 3 and 5 of DCOLDO0:SECONDTRIM */
-#define LRF_TRIM_DCOLDO0_SECONDTRIM_MAX_STATE_B_DCOLDO_WORKAROUND_CC27XX 63U    /* DCOLDO0:SECONDTRIM maximum value allowed within the range of 6-bit representation */
-
-/* CC27XX devices with revision numbers below 5 only have one PA trim value (instead of four) in CFG and need a workaround */
-#define LRF_TRIM_VERSION_CORRECT_AMOUNT_OF_PA_TRIMS_CC27XX 5
+typedef struct {
+    uint16_t T1;            /* T1 constant (RF activity latency) in 0.25 us steps. 0: REQUEST and PRIORITY not used */
+    uint8_t T2;             /* T2 constant (Priority indication time) in 0.25 us steps. 0: No priority indication */
+    uint8_t grantPin;       /* Grant pin in use if coex is enabled, or "disabled" if globally disabled */
+    bool invertedPriority;  /* True if coex priority signal is inverted (0 means high priority) */
+    uint16_t ieeeTSync;     /* IEEE 802.15.4: Timeout (0.25 us steps) of REQUEST on frame indication before sync must be seen */
+    uint8_t ieeeCorrMask;   /* IEEE 802.15.4: Bit mask indicating correlation tops needed to declare frame indication */
+} LRF_CoexConfiguration;
 
 /* Definitions for trim */
+#define LRF_TRIM_NUM_VARIANTS 2
+
 typedef struct {
     uint32_t word[2];
 } LRF_DoubleWord;
+
+#ifdef DeviceFamily_CC27XX
+typedef struct {
+    union {
+        struct {
+            uint16_t r0     : 4;
+            uint16_t r1     : 4;
+            uint16_t r2     : 4;
+            uint16_t r3     : 4;
+        } fields;
+        uint16_t value;
+    };
+} LRF_Trim_vddsComp;
+typedef struct {
+    int8_t thr;
+    union {
+        struct {
+            uint8_t val     : 4;
+            uint8_t spare   : 4;
+        } fields;
+        uint8_t value;
+    };
+} LRF_Trim_rtrimTxComp;
+typedef struct {
+    union {
+        struct {
+            uint16_t lowCmp  : 4;
+            uint16_t highCmp : 4;
+            uint16_t nomTmp  : 4;
+            uint16_t nomIdx  : 4;
+        } fields;
+        uint16_t value;
+    };
+} LRF_Trim_tempCoeffComp;
+#endif //DeviceFamily_CC27XX
 
 typedef union {
     struct {
@@ -414,12 +453,18 @@ typedef struct {
     int32_t highGainOffset : 4;
 } LRF_Trim_tempRssiAgc;
 
+typedef struct {
+    uint8_t dcoldoFirstMinOffset       : 2;
+    uint8_t dcoldoFirstMaxOffset       : 2;
+    uint8_t dcoldoSecondMinOffset      : 2;
+    uint8_t dcoldoSecondMaxOffset      : 2;
+} LRF_Trim_dcoldoOffset;
 typedef union {
     struct {
         struct {    // length: 4B
             LRF_Trim_tempLdoRtrim tempLdoRtrim;
             uint8_t hfxtPdError;
-            uint8_t res;
+            LRF_Trim_dcoldoOffset dcoldoOffset; /* Revision >= 8 only */
          } lrfdrfeExtTrim1;                  /* Revision >= 4 only */
         // Trim values for synth divider 0
         LRF_Trim_tempRssiAgc lrfdrfeExtTrim0;
@@ -476,6 +521,18 @@ typedef union {
     uint32_t data;
 } LRF_Trim4;
 
+#ifdef DeviceFamily_CC27XX
+typedef union {
+    struct {
+        LRF_Trim_vddsComp vddsComp;
+        uint16_t reserved;
+        LRF_Trim_rtrimTxComp rtrimTxComp;
+        LRF_Trim_tempCoeffComp tempCoeffComp;
+    };
+    uint32_t data;
+} LRF_Trim11;
+#endif //DeviceFamily_CC27XX
+
 /* This definition is used instead of the definition from hw_fcfg.h to accommodate implementation
    and cut parameters not relevant to LRF */
 typedef struct {
@@ -488,6 +545,10 @@ typedef struct {
     LRF_Trim_Variant    trimVariant[LRF_TRIM_NUM_VARIANTS];
     LRF_Trim3           trim3;
     LRF_Trim4           trim4;
+#ifdef DeviceFamily_CC27XX
+    uint32_t            reserved1[15];
+    LRF_Trim11          trim11;
+#endif //DeviceFamily_CC27XX
 } LRF_TrimDef;
 
 /**
@@ -507,9 +568,10 @@ typedef struct LRF_SwConfig_s {
  *  @brief Software defined PHY parameter list
  */
 typedef struct LRF_SwParam_s {
-    const LRF_SwConfig      *swConfig;          /*!< Software defined parameters. */
-    const LRF_TxPowerTable  *txPowerTable;      /*!< TX power table */
-    const LRF_TrimDef       *trimDef;           /*!< Trim definitions. NULL: Do not apply trim. */
+    const LRF_SwConfig          *swConfig;          /*!< Software defined parameters. */
+    const LRF_TxPowerLimitTable *txPowerLimitTable; /*!< TX power limit table */
+    const LRF_TxPowerTable      *txPowerTable;      /*!< TX power table */
+    const LRF_TrimDef           *trimDef;           /*!< Trim definitions. NULL: Do not apply trim. */
 } LRF_SwParam;
 
 /**
@@ -533,8 +595,9 @@ typedef struct LRF_Config_s {
 #define TOPSM_RAM_SZ            0x00001000U /* 4 KB */
 #define MAX_REG_CONFIG_LEN      1024U        /* 1024 entries, using 4 KB */
 
-#define LRF_TXPOWER_REFERENCE_TEMPERATURE 25    /*!< Reference temperature for TX power, degrees C */
-#define LRF_TXPOWER_TEMPERATURE_SCALING  0x100 /*!< Scaling factor for TX power temperature coefficients */
+#define LRF_TXPOWER_REFERENCE_TEMPERATURE      25          /*!< Reference temperature for TX power, degrees C */
+#define LRF_TXPOWER_TEMPERATURE_SCALING        0x100       /*!< Scaling factor for TX power temperature coefficients */
+#define LRF_TXPOWER_BYPASS_FREQUENCY_BACKOFF   0xFFFFFFFF  /*!< Special value to indicate that no frequency specific back-off should be applied */
 
 extern const LRF_TxShape LRF_shapeBaseGfsk05;
 extern const LRF_TxShape LRF_shapeBaseGfsk067;
@@ -575,11 +638,22 @@ void LRF_programTemperatureCompensatedTxPower(void);
  *
  *  @param  powerLevel maximum allowed power level in dBm, or special value
  *      (%LRF_TxPower_Use_Min, %LRF_TxPower_Use_Max, %LRF_TxPower_Use_Raw, or %LRF_TxPower_None)
+ *  @param  rfFreq Radio frequency in Hz for which the maximum Tx power is calculated
  *
  *  @return TxPowerResult_Ok on success; TxPowerResult_Error if no valid settings were found
  *
  */
-LRF_TxPowerResult LRF_programTxPower(LRF_TxPowerTable_Index powerLevel);
+LRF_TxPowerResult LRF_programTxPower(LRF_TxPowerTable_Index powerLevel, uint32_t rfFreq);
+
+/**
+ * @brief Reads maximum RSSI from register
+ */
+int8_t LRF_readMaxRssi(void);
+
+/**
+ * @brief Initialize maximum RSSI register
+ */
+void LRF_initializeMaxRssi(int8_t initRssi);
 
 /**
  * @brief Request specific clock enable bits for use by the RCL
@@ -602,6 +676,110 @@ static inline void LRF_clearRclClockEnable(uint16_t mask)
 {
     hal_clear_rcl_clock_enable(mask);
 }
+
+/**
+ * @brief Enable monitoring of coexistence grant signal in RFE
+ *
+ *  Turns on the coex grant signal for the configured IO pin (if any). The function must be called
+ *  before starting a PBE operation. The handler is responsible for disabling in order to avoid
+ *  coex operation in commands not supporting it.
+ *
+ *  @note This function is intended as internal to RCL and its handlers
+ *
+ */
+void LRF_enableCoexGrant(void);
+
+/**
+ * @brief Disable monitoring of coexistence grant signal in RFE
+ *
+ *  Turns off the coex grant signal to the RFE. Should be called by the handler at the end of a
+ *  command where LRF_enableCoexGrant was called. The function must be called after the PBE
+ *  operation ended, but can safely be called even without a previous LRF_enableCoexGrant.
+ *
+ *  @note This function is intended as internal to RCL and its handlers
+ *
+ */
+void LRF_disableCoexGrant(void);
+
+/**
+ * @brief Deassert coexistence REQUEST
+ *
+ *  Set coex REQUEST and PRIORITY lines low to indicate no request. Should only be done when PBE
+ *  is finished.
+ *
+ *  @note This function is intended as internal to RCL and its handlers
+ *
+ */
+void LRF_deassertCoexRequest(void);
+
+/**
+ * @brief Enable temperature monitoring to allow handlers to update temperature compensation
+ *
+ *  @note This function is intended as internal to RCL and its handlers
+ *
+ */
+void LRF_enableTemperatureMonitoring(void);
+
+/**
+ * @brief Disable temperature monitoring
+ *
+ *  @note This function is intended as internal to RCL and its handlers
+ *
+ */
+void LRF_disableTemperatureMonitoring(void);
+
+/**
+ * @brief Update temperature compensation in radio
+ *
+ * Update temperature compensation by allowing TCXO updates, set new RF frequency correction,
+ * update temperature compensated trim values, and update temperature compensation for TX power
+ *
+ *  @note This function is intended as internal to RCL and its handlers
+ *
+ *  @param rfFrequency RF frequency at which the command is operating
+ *  @param tx True if radio will be starting in TX; false if it will be starting in RX
+ *
+ */
+void LRF_updateTemperatureCompensation(uint32_t rfFrequency, bool tx);
+
+/**
+ * @brief Get temperature used in last setting of trims
+ */
+int16_t LRF_getLastTrimTemperature(void);
+
+/**
+ * @brief Set the default antenna to be used during the next radio configuration.
+ *
+ * This function configures the antenna selection value for the current PHY.
+ * The selection does not take effect immediately but will be applied the next
+ * time the radio is configured. This typically occurs when a radio command is
+ * started or when the device wakes up from standby while running a radio command.
+ *
+ * @note This function is intended for internal use only.
+ *
+ * @param value Antenna selection value.
+ *
+ */
+void LRF_setAntennaSelection(uint32_t value);
+
+#ifdef DeviceFamily_CC27XX
+/**
+ * @brief Update the PA ESD protection configuration
+ *
+ * This function updates the PA ESD protection configuration by following these
+ * rules:
+ * - Enable the PA ESD protection if the 20dBm mode is enabled and the VDDS
+ *   supply voltage is equal to or greater than 3.635V.
+ * - Otherwise, disable the PA ESD protection.
+ *
+ * The new configuration does not take effect immediately but will be applied
+ * the next time the PA is enabled in the modem.
+ *
+ * @note This function is intended for internal use only.
+ *
+ */
+void LRF_updatePaEsdProtection();
+#endif
 
 /* Temporarily added definitions until https://jira.itg.ti.com/browse/TIDRIVERS-6489 is implemented */
 #ifndef NO_DRIVERS

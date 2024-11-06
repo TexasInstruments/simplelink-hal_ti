@@ -65,6 +65,7 @@ void hal_disable_all_command_radio_interrupts(void);
 void hal_disable_all_dispatch_radio_interrupts(void);
 void hal_temperature_init(void);
 int16_t hal_get_temperature(void);
+uint16_t hal_get_vdds_voltage(void);
 uint32_t hal_get_hfxt_ratio(void);
 uint32_t hal_get_hfxt_ratio_default(void);
 
@@ -95,9 +96,15 @@ void hal_arm_cmd_done_cap(void);
 uint32_t hal_get_cmd_done_cap(void);
 void hal_set_rcl_clock_enable(uint16_t mask);
 void hal_clear_rcl_clock_enable(uint16_t mask);
+uint8_t hal_set_dcdc_ipeak_setting(uint8_t setting);
 void hal_enable_clk_buffer(void);
-void hal_power_set_constraint(void);
-void hal_power_release_constraint(void);
-void hal_power_open(void (*f)(RCL_PowerEvent));
+void hal_power_set_standby_constraint(void);
+void hal_power_release_standby_constraint(void);
+void hal_power_set_swtcxo_update_constraint(void);
+void hal_power_release_swtcxo_update_constraint(void);
+void hal_power_open(void (*rclPowerNotifyFunction)(RCL_PowerEvent));
 void hal_power_close(void);
+void hal_set_temperature_notification(int16_t currentTemperature, uint16_t temperatureRange, void (*rclTemperatureNotify)(int16_t));
+void hal_stop_temperature_notification(void);
+
 #endif
