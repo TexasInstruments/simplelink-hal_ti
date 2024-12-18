@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022-2024, Texas Instruments Incorporated
+ * Copyright (c) 2022-2023, Texas Instruments Incorporated
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -29,23 +29,30 @@
  * OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE,
  * EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+/*
+ *  ======== RCL_Gpio.c ========
+ */
 
-#ifndef ti_drivers_RCL_Profiling_h__include
-#define ti_drivers_RCL_Profiling_h__include
+/*
+ *  ======== RCL_GPIO_enable ========
+ */
+void __attribute__((weak)) RCL_GPIO_enable(void)
+{
+    /* Internal TI use: Enables RCL GPIOs */
+}
 
-typedef enum RCL_ProfilingEvent_e {
-    RCL_ProfilingEvent_PreprocStart = 1,   /*!< Radio operation preprocessing has started */
-    RCL_ProfilingEvent_PreprocStop,        /*!< Radio operation preprocessing has finalized */
-    RCL_ProfilingEvent_PostprocStart,      /*!< Radio operation postprocessing has started */
-    RCL_ProfilingEvent_PostprocStop,       /*!< Radio operation postprocessing has finalized */
-    RCL_ProfilingEvent_CommitPktStart,     /*!< LRF has notified RCL of received packet with LRF event rxOk */
-    RCL_ProfilingEvent_CommitPktEnd,       /*!< RCL committed packet to multibuffer and notified Stack with event rxEntryAvailable */
-    RCL_ProfilingEvent_ProcessAuxPtrStart, /*!< ADV_EXT_IND received and committed to multibuffer */
-    RCL_ProfilingEvent_ProcessAuxPtrEnd,   /*!< AuxPtr has been processed and a new radio operation has been scheduled on a secondary channel*/
-    RCL_ProfilingEvent_PhySwitchStart,     /*!< Phy switch has been requested by command handler */
-    RCL_ProfilingEvent_PhySwitchEnd,       /*!< Phy switch has succeeded */
-} RCL_ProfilingEvent;
+/*
+ *  ======== RCL_GPIO_disable ========
+ */
+void __attribute__((weak)) RCL_GPIO_disable(void)
+{
+    /* Internal TI use: Disables RCL GPIOs */
+}
 
-extern void __attribute__((weak)) RCL_Profiling_eventHook(RCL_ProfilingEvent event);
-
-#endif /* ti_drivers_RCL_Profiling_h__include */
+/*
+ *  ======== RCL_Tracer_enable ========
+ */
+void __attribute__((weak)) RCL_Tracer_enable(void)
+{
+    /* Internal TI use: Enables RF Tracer */
+}

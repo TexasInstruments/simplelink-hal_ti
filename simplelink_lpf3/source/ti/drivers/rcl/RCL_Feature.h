@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022-2024, Texas Instruments Incorporated
+ * Copyright (c) 2024, Texas Instruments Incorporated
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -30,22 +30,21 @@
  * EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef ti_drivers_RCL_Profiling_h__include
-#define ti_drivers_RCL_Profiling_h__include
+#ifndef ti_drivers_RCL_Feature_h__include
+#define ti_drivers_RCL_Feature_h__include
 
-typedef enum RCL_ProfilingEvent_e {
-    RCL_ProfilingEvent_PreprocStart = 1,   /*!< Radio operation preprocessing has started */
-    RCL_ProfilingEvent_PreprocStop,        /*!< Radio operation preprocessing has finalized */
-    RCL_ProfilingEvent_PostprocStart,      /*!< Radio operation postprocessing has started */
-    RCL_ProfilingEvent_PostprocStop,       /*!< Radio operation postprocessing has finalized */
-    RCL_ProfilingEvent_CommitPktStart,     /*!< LRF has notified RCL of received packet with LRF event rxOk */
-    RCL_ProfilingEvent_CommitPktEnd,       /*!< RCL committed packet to multibuffer and notified Stack with event rxEntryAvailable */
-    RCL_ProfilingEvent_ProcessAuxPtrStart, /*!< ADV_EXT_IND received and committed to multibuffer */
-    RCL_ProfilingEvent_ProcessAuxPtrEnd,   /*!< AuxPtr has been processed and a new radio operation has been scheduled on a secondary channel*/
-    RCL_ProfilingEvent_PhySwitchStart,     /*!< Phy switch has been requested by command handler */
-    RCL_ProfilingEvent_PhySwitchEnd,       /*!< Phy switch has succeeded */
-} RCL_ProfilingEvent;
+#include <stdint.h>
+#include <stdbool.h>
 
-extern void __attribute__((weak)) RCL_Profiling_eventHook(RCL_ProfilingEvent event);
+/**
+ * @brief Configuration structure to be set at build time to control features
+ *
+ * If LTO is used, the configurations in this struct should enable the linker to remove unneeded code
+ */
+typedef struct {
+    bool enableTemperatureMonitoring;
+} RCL_FeatureControl;
 
-#endif /* ti_drivers_RCL_Profiling_h__include */
+extern const RCL_FeatureControl rclFeatureControl;
+
+#endif
