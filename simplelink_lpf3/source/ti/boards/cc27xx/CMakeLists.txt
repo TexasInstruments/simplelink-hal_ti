@@ -1,4 +1,4 @@
-# Copyright (c) 2024, Texas Instruments Incorporated
+# Copyright (c) 2025, Texas Instruments Incorporated
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -28,5 +28,21 @@
 # OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE,
 # EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-add_subdirectory_ifdef(CONFIG_HAS_CC23X0_SDK cc23x0r5)
-add_subdirectory_ifdef(CONFIG_HAS_CC27XX_SDK cc27xx)
+if(CONFIG_SIMPLELINK_F3_RADIO_DRIVER)
+
+  include(${CMAKE_CURRENT_LIST_DIR}/CMakeSources.cmake)
+
+  zephyr_include_directories(
+    .
+    )
+
+  zephyr_library()
+
+  zephyr_library_sources(
+    ${SOURCES_RCL_SETTINGS}
+    )
+
+  # [Workaround]: Include the radio settings for ble by default
+  # TODO: radio settings should be selectable, see ZEPHYR-24
+  zephyr_library_sources_ifdef(CONFIG_SIMPLELINK_F3_RF_SETTING_PREGEN ${SOURCES_RCL_SETTINGS_PREGEN})
+endif()
