@@ -1,0 +1,94 @@
+add_subdirectory(source/ti/devices)
+if(CONFIG_WIFI_TI_CC35XX)
+  add_subdirectory(source/ti/drivers/net/wifi/wifi_host_driver)
+  add_subdirectory(source/ti/drivers/net/wifi/wifi_platform/cc35xx)
+  add_subdirectory(third_party/hostap)
+  add_subdirectory(third_party/mbedTLS)
+  add_subdirectory(source/ti/net/wifi_stack)
+endif()
+
+if(CONFIG_HAS_CC35XX_SDK)
+  if(CONFIG_SOC_SERIES_CC35XXE)
+    zephyr_compile_definitions(DeviceFamily_CC35XX ${COMPILER})
+    zephyr_compile_definitions(CONFIG_DYNAMIC_DPL_OBJECTS)
+    zephyr_include_directories(
+      .
+      source
+      source/ti/drivers
+      third_party/hsmddk/include/Kit/Log/incl/
+    )
+    if(CONFIG_WIFI_TI_CC35XX)
+      zephyr_include_directories(
+        firmware
+	# shared between host driver and hostap
+        source/ti/drivers/net/wifi/wifi_host_driver
+        source/ti/drivers/net/wifi/wifi_host_driver/inc_common
+        source/ti/drivers/net/wifi/wifi_host_driver/inc_adapt
+        source/ti/drivers/net/wifi/wifi_host_driver/trnspt_layer
+      )
+    endif()
+
+    zephyr_library()
+    zephyr_library_compile_definitions(${COMPILER})
+    zephyr_library_sources(
+      kernel/zephyr/dpl/ClockP_zephyr.c
+      kernel/zephyr/dpl/HwiP_zephyr.c
+      kernel/zephyr/dpl/MessageQueueP_zephyr.c
+      kernel/zephyr/dpl/SwiP_zephyr.c
+      kernel/zephyr/dpl/SemaphoreP_zephyr.c
+      kernel/zephyr/dpl/TaskP_zephyr.c
+      kernel/zephyr/dpl/QueueP_zephyr.c
+
+      source/ti/drivers/UART2.c
+      source/ti/drivers/uart2/UART2WFF3.c
+      source/ti/devices/cc35xx/driverlib/adc.c
+      source/ti/devices/cc35xx/driverlib/uart.c
+      source/ti/devices/cc35xx/driverlib/spi.c
+      source/ti/drivers/GPIO.c
+      source/ti/drivers/gpio/GPIOWFF3.c
+      source/ti/drivers/dma/DMAWFF3.c
+      source/ti/devices/cc35xx/driverlib/dma.c
+      source/ti/drivers/power/PowerWFF3.c
+      source/ti/drivers/cryptoutils/hsm/HSMLPF3.c
+
+      source/ti/drivers/xmem/flash/FlashWFF3.c
+      source/ti/devices/cc35xx/driverlib/xip.c
+      source/ti/devices/cc35xx/driverlib/ospi.c
+      source/ti/devices/cc35xx/driverlib/i2c.c
+      source/ti/drivers/utils/RingBuf.c
+      source/ti/drivers/utils/List.c
+    )
+    if(CONFIG_TI_CC35XX_HSM)
+      zephyr_library_sources(
+        third_party/hsmddk/include/Integration/HSMSAL/HSMSAL.c
+        third_party/hsmddk/include/Integration/Adapter_DriverInit/Driver/src/adapter_init.c
+        third_party/hsmddk/include/Integration/Adapter_DriverInit/Driver/src/adapter_driver_init.c
+        third_party/hsmddk/include/Integration/Adapter_VEX/src/adapter_vex_init.c
+        third_party/hsmddk/include/Integration/Adapter_VEX/src/adapter_vex_device.c
+        third_party/hsmddk/include/Integration/Adapter_VEX/src/adapter_vex_physicaltoken.c
+        third_party/hsmddk/include/Integration/Adapter_VEX/src/adapter_vex_identity.c
+        third_party/hsmddk/include/Integration/Adapter_VEX/src/adapter_vex_mailbox.c
+        third_party/hsmddk/include/Integration/Adapter_Generic/src/adapter_interrupts.c
+        third_party/hsmddk/include/Integration/DriverFramework/src/device_generic.c
+        third_party/hsmddk/include/Integration/DriverFramework/src/hwpal_device_mb.c
+        third_party/hsmddk/include/Kit/EIP130/MailboxControl/src/eip130.c
+        third_party/hsmddk/include/Kit/EIP130/TokenHelper/src/eip130_token_common.c
+        third_party/hsmddk/include/Kit/EIP201/src/eip201.c
+        third_party/hsmddk/include/Kit/Log/src/log.c
+        source/ti/drivers/aesecb/AESECBLPF3.c
+        source/ti/drivers/aesccm/AESCCMLPF3.c
+        source/ti/drivers/aesctr/AESCTRLPF3.c
+        source/ti/drivers/cryptoutils/cryptokey/CryptoKeyPlaintext.c
+        source/ti/drivers/TRNG.c
+        source/ti/drivers/trng/TRNGLPF3HSM.c
+      )
+    endif()
+    if(CONFIG_WIFI_TI_CC35XX)
+      zephyr_library_sources(
+        kernel/zephyr/dpl/osi_dpl.c
+        kernel/zephyr/dpl/osi_filesystem.c
+        kernel/zephyr/dpl/osi_term.c
+      )
+    endif()
+  endif()
+endif()
