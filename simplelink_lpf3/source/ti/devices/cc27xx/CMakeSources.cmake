@@ -40,8 +40,11 @@ set(SOURCES_DRIVERLIB
   lrfd.c
   pmctl.c
   setup.c
+  spi.c
   uart.c
   i2c.c
+  udma.c
+  adc.c
 )
 
 list(TRANSFORM SOURCES_DRIVERLIB PREPEND driverlib/)
