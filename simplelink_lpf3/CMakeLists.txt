@@ -50,6 +50,7 @@ if(CONFIG_HAS_CC23X0_SDK)
   zephyr_include_directories(
     .
     source
+    source/ti/drivers/rcl/zephyr
     )
 
   zephyr_library()
@@ -94,6 +95,7 @@ if(CONFIG_HAS_CC27XX_SDK)
   zephyr_include_directories(
     .
     source
+    source/ti/drivers/rcl/zephyr
     )
 
   zephyr_library()
