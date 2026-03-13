@@ -35,7 +35,9 @@ add_subdirectory(source/ti/boards)
 
 include(${CMAKE_CURRENT_LIST_DIR}/CMakeSources.cmake)
 
-add_subdirectory_ifdef(CONFIG_BT source/ti/ble)
+if(CONFIG_BT AND NOT CONFIG_BOARD_NATIVE_SIM)
+  add_subdirectory(source/ti/ble)
+endif()
 
 if(CONFIG_HAS_CC23X0_SDK)
 
