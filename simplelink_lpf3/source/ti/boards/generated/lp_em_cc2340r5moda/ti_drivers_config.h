@@ -41,20 +41,36 @@ extern const uint_least8_t              CONFIG_ECDH_0_CONST;
 #define CONFIG_ECDH_0                   0
 #define CONFIG_TI_DRIVERS_ECDH_COUNT    1
 
+/*
+ *  ======== RCL ========
+ */
+
+#if defined(CONFIG_RCL_COEX_RUNTIME_MODIFIABLE)
+#include <ti/drivers/rcl/LRF.h>
+extern LRF_CoexConfiguration lrfCoexConfiguration;
+#endif
 
 /*
- *  ======== GPIO ========
+ *  ======== Board_init ========
+ *  Perform all required TI-Drivers initialization
+ *
+ *  This function should be called once at a point before any use of
+ *  TI-Drivers.
  */
-/* The range of pins available on this device */
-extern const uint_least8_t GPIO_pinLowerBound;
-extern const uint_least8_t GPIO_pinUpperBound;
+extern void Board_init(void);
 
-/* LEDs are active high */
-#define CONFIG_GPIO_LED_ON  (1)
-#define CONFIG_GPIO_LED_OFF (0)
-
-#define CONFIG_LED_ON  (CONFIG_GPIO_LED_ON)
-#define CONFIG_LED_OFF (CONFIG_GPIO_LED_OFF)
+/*
+ *  ======== Board_initGeneral ========
+ *  (deprecated)
+ *
+ *  Board_initGeneral() is defined purely for backward compatibility.
+ *
+ *  All new code should use Board_init() to do any required TI-Drivers
+ *  initialization _and_ use <Driver>_init() for only where specific drivers
+ *  are explicitly referenced by the application.  <Driver>_init() functions
+ *  are idempotent.
+ */
+#define Board_initGeneral Board_init
 
 #ifdef __cplusplus
 }

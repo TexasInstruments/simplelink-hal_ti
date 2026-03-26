@@ -2,6 +2,7 @@ set(SOURCES_DRIVERLIB
     adc.c
     evtsvt.c
     aes_gcc.s
+    chipinfo.c
     cpu.c
     gpio.c
     i2c.c
@@ -9,8 +10,10 @@ set(SOURCES_DRIVERLIB
     lrfd.c
     setup.c
     spi.c
+    systimer.c
     uart.c
     udma.c
+    ioc.c
 )
 
 list(TRANSFORM SOURCES_DRIVERLIB PREPEND driverlib/)

@@ -111,6 +111,8 @@ extern void llCalculateAdvTimeGap(uint32_t* timeGap);
 extern void hci_tl_ClearAdvSet(void);
 extern uint8_t processAdvExtraHCICmd(hciPacket_t* pMsg);
 extern void hci_tl_initAdvCallbacks(void);
+extern void llCmdAdvStartedEventHandle(void);
+extern hciStatus_t hciCmdParserLegacyAdvertiser(uint8_t* pData, uint16_t cmdOpCode);
 
 
 // Wrapper functions for the feature implementations
@@ -140,5 +142,7 @@ void OPT_llCalculateAdvTimeGap(uint32_t* timeGap);
 void OPT_hci_tl_ClearAdvSet(void);
 uint8_t OPT_processAdvExtraHCICmd(hciPacket_t* pMsg);
 void OPT_hci_tl_initAdvCallbacks(void);
+void OPT_llCmdAdvStartedEventHandle(void);
+hciStatus_t OPT_hciCmdParserLegacyAdvertiser(uint8_t* pData, uint16_t cmdOpCode);
 
 #endif /* CTRL_ADV_NCONN_H_ */
