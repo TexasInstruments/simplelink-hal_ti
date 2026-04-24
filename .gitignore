@@ -1,0 +1,12 @@
+BinaryFiles.txt
+Checkpatch.txt
+GitDiffCheck.txt
+Kconfig.txt
+Nits.txt
+Pylint.txt
+compliance.xml
+Gitlint.txt
+Identity.txt
+KconfigBasic.txt
+KconfigBasicNoModules.txt
+**/__pycache__/

@@ -1,32 +1,33 @@
 // SETTINGS FOR PHY BASED ON RADIO CONTROL LAYER (SOURCE FILE)
 //
-// Usage                  Protocol stack
+// Usage                    Protocol stack
 //
 //
 // CODE EXPORT INFORMATION
 // This file is generated
 //
-// Tool name              SmartRF Studio 8
-// Tool version           0.6.0.327 INTERNAL
+// Tool name                SmartRF Studio 8
+// Tool version             0.6.0.392 INTERNAL
 //
 //
 // WORKSPACE INFORMATION
 //
-// Workspace file         srf_cli.workspace
-// Device                 CC2340R5
-//     Package            QFN40 5x5 RKP
-//     Revision(s)        B (2.0)
-// SDK                    SimpleLink LPF3 SDK 8.11.00.09
-// Board                  LP-EM-CC2340R5
-// PHY                    2.4 GHz - Bluetooth 5, LE - 1 Mbps / 2 Mbps / Coded
+// Workspace file           srf_cli.workspace
+// Device                   CC2340R5
+//     Package              QFN40 5x5 RKP
+//     Revision(s)          B (2.0)
+// SDK                      SimpleLink LPF3 SDK 9.10.00.54
+// Board                    LP-EM-CC2340R5
+// PHY                      2.4 GHz - Bluetooth 5, LE - 1 Mbps / 2 Mbps / Coded
+//     State                Characterized
 //
 //
 // PHY PROPERTIES
 //
 // Run-time properties:
-//     Sub-PHY            1 Mbps 
-//     Channel            17 (2440 MHz) 
-//     TX output power    5.0 dBm 
+//     Sub-PHY              1 Mbps
+//     Channel              17 (2440 MHz)
+//     TX output power      5.0 dBm
 
 #include "rcl_settings_ble.h"
 #include DeviceFamily_constructPath(rf_patches/lrf_pbe_binary_ble5.h)
@@ -103,7 +104,7 @@ static const uint32_t LRF_commonRegConfig[] =
 // Configuration: Sub-PHY = 1 Mbps, 2 Mbps
 static const uint32_t LRF_subPhy1Mbps2MbpsRegConfig[] =
 {
-    0x00024010,                       // Segment length = 16
+    0x00024010,                       // Segment length = 16 (SUB_PHY = 1_MBPS, 2_MBPS)
     0x00003004,                       //     HW sparse region (address/value pairs, count = 5)
     0x1098AAAA,                       //         LRFDPBE.MDMCMDPAR2
     0x20B80015,                       //         LRFDMDM.SYSTIMEVTMUX0
@@ -125,7 +126,7 @@ static const uint32_t LRF_subPhy1Mbps2MbpsRegConfig[] =
 // Configuration: Sub-PHY = 1 Mbps, Coded
 static const uint32_t LRF_subPhy1MbpsCodedRegConfig[] =
 {
-    0x00014005,                       // Segment length = 5
+    0x00014005,                       // Segment length = 5 (SUB_PHY = 1_MBPS, CODED)
     0x0000A000,                       //     Data structure 32-bit region (start byte position = 0, count = 1)
     (uint32_t) &LRF_swConfig1Mbps,    //         LRF_swParam : swConfig
     0x00003001,                       //     HW sparse region (address/value pairs, count = 2)
@@ -136,7 +137,7 @@ static const uint32_t LRF_subPhy1MbpsCodedRegConfig[] =
 // Configuration: Sub-PHY = 2 Mbps, Coded
 static const uint32_t LRF_subPhy2MbpsCodedRegConfig[] =
 {
-    0x00030002,                       // Segment length = 2
+    0x00030002,                       // Segment length = 2 (SUB_PHY = 2_MBPS, CODED)
     0x00007000,                       //     RAM sparse region (address/value pairs, count = 1)
     0x683E004C                        //         RFE_COMMON_RAM.PHYRSSIOFFSET
 };
@@ -144,7 +145,7 @@ static const uint32_t LRF_subPhy2MbpsCodedRegConfig[] =
 // Configuration: Sub-PHY = 1 Mbps
 static const uint32_t LRF_subPhy1MbpsRegConfig[] =
 {
-    0x0003400D,                       // Segment length = 13
+    0x0003400D,                       // Segment length = 13 (SUB_PHY = 1_MBPS)
     0x00003002,                       //     HW sparse region (address/value pairs, count = 3)
     0x10908007,                       //         LRFDPBE.MDMCMDPAR0
     0x20F80F50,                       //         LRFDMDM.DEMCODC0
@@ -154,7 +155,7 @@ static const uint32_t LRF_subPhy1MbpsRegConfig[] =
     0x00007000,                       //     RAM sparse region (address/value pairs, count = 1)
     0x20200000,                       //         PBE_BLE5_RAM.PHY
     0x20245002,                       //     RAM 16-bit region (start address = 0x2024, count = 3)
-    0x01AE018E,                       //         PBE_BLE5_RAM.PRERXIFS               PBE_BLE5_RAM.PRETXIFS
+    0x0186018E,                       //         PBE_BLE5_RAM.PRERXIFS               PBE_BLE5_RAM.PRETXIFS
     0x00000226,                       //         -                                   PBE_BLE5_RAM.RXTIMEOUT
     0x683E5001,                       //     RAM 16-bit region (start address = 0x683E, count = 2)
     0x75F80050                        //         RFE_COMMON_RAM.SPARE0SHADOW         RFE_COMMON_RAM.PHYRSSIOFFSET
@@ -163,7 +164,7 @@ static const uint32_t LRF_subPhy1MbpsRegConfig[] =
 // Configuration: Sub-PHY = 2 Mbps
 static const uint32_t LRF_subPhy2MbpsRegConfig[] =
 {
-    0x00010010,                       // Segment length = 16
+    0x00010010,                       // Segment length = 16 (SUB_PHY = 2_MBPS)
     0x0000A000,                       //     Data structure 32-bit region (start byte position = 0, count = 1)
     (uint32_t) &LRF_swConfig2Mbps,    //         LRF_swParam : swConfig
     0x00003004,                       //     HW sparse region (address/value pairs, count = 5)
@@ -185,7 +186,7 @@ static const uint32_t LRF_subPhy2MbpsRegConfig[] =
 // Configuration: Sub-PHY = Coded
 static const uint32_t LRF_subPhyCodedRegConfig[] =
 {
-    0x00020019,                       // Segment length = 25
+    0x00020019,                       // Segment length = 25 (SUB_PHY = CODED)
     0x00003001,                       //     HW sparse region (address/value pairs, count = 2)
     0x10900097,                       //         LRFDPBE.MDMCMDPAR0
     0x10983C3C,                       //         LRFDPBE.MDMCMDPAR2
@@ -213,18 +214,18 @@ static const uint32_t LRF_subPhyCodedRegConfig[] =
     0x0001001C                        //         RFE_COMMON_RAM.AGCINFO              RFE_COMMON_RAM.SPARE1SHADOW
 };
 
-// Configuration: Coded TX rate = S8 (8 symbols per bit = 125 kbps)
+// Configuration: Coded TX rate = S8
 static const uint32_t LRF_codedTxRateS8RegConfig[] =
 {
-    0x00044002,                       // Segment length = 2
+    0x00044002,                       // Segment length = 2 (CODED_TX_RATE = S8)
     0x00003000,                       //     HW sparse region (address/value pairs, count = 1)
     0x21280000                        //         LRFDMDM.SPARE1
 };
 
-// Configuration: Coded TX rate = S2 (2 symbols per bit = 500 kbps)
+// Configuration: Coded TX rate = S2
 static const uint32_t LRF_codedTxRateS2RegConfig[] =
 {
-    0x00040002,                       // Segment length = 2
+    0x00040002,                       // Segment length = 2 (CODED_TX_RATE = S2)
     0x00003000,                       //     HW sparse region (address/value pairs, count = 1)
     0x21280001                        //         LRFDMDM.SPARE1
 };
@@ -242,7 +243,7 @@ static const LRF_RegConfigList LRF_regConfigList = {
         (LRF_ConfigWord*) LRF_subPhy2MbpsRegConfig,
         (LRF_ConfigWord*) LRF_subPhyCodedRegConfig,
         (LRF_ConfigWord*) LRF_codedTxRateS8RegConfig,
-        (LRF_ConfigWord*) LRF_codedTxRateS2RegConfig 
+        (LRF_ConfigWord*) LRF_codedTxRateS2RegConfig
     }
 };
 
@@ -250,14 +251,14 @@ static const LRF_RegConfigList LRF_regConfigList = {
 const LRF_TxShape LRF_shapeBaseGfsk067 = {
     .scale                 = 0x0FDE2,
     .numCoeff              = 0x0011,
-    .coeff                 = { 0x01, 0x02, 0x05, 0x0A, 0x14, 0x22, 0x37, 0x52, 0x71, 0x91, 0xB0, 0xCB, 0xE0, 0xEE, 0xF8, 0xFD, 0xFF } 
+    .coeff                 = { 0x01, 0x02, 0x05, 0x0A, 0x14, 0x22, 0x37, 0x52, 0x71, 0x91, 0xB0, 0xCB, 0xE0, 0xEE, 0xF8, 0xFD, 0xFF }
 };
 
 // LRF_TxShape data structure
 const LRF_TxShape LRF_shapeBaseGfsk05 = {
     .scale                 = 0x0F183,
     .numCoeff              = 0x0014,
-    .coeff                 = { 0x01, 0x02, 0x03, 0x06, 0x0A, 0x11, 0x1A, 0x27, 0x37, 0x4B, 0x62, 0x7B, 0x94, 0xAD, 0xC4, 0xD8, 0xE7, 0xF3, 0xFB, 0xFF } 
+    .coeff                 = { 0x01, 0x02, 0x03, 0x06, 0x0A, 0x11, 0x1A, 0x27, 0x37, 0x4B, 0x62, 0x7B, 0x94, 0xAD, 0xC4, 0xD8, 0xE7, 0xF3, 0xFB, 0xFF }
 };
 
 // LRF_SwConfig data structure
@@ -268,7 +269,7 @@ const LRF_SwConfig LRF_swConfig1Mbps = {
     .modFrequencyDeviation = 0x0003D090,
     .txShape               = &LRF_shapeBaseGfsk067,
     .bwIndex               = 0x00,
-    .bwIndexDither         = 0x01 
+    .bwIndexDither         = 0x01
 };
 
 // LRF_SwConfig data structure
@@ -279,7 +280,7 @@ const LRF_SwConfig LRF_swConfig2Mbps = {
     .modFrequencyDeviation = 0x0007A120,
     .txShape               = &LRF_shapeBaseGfsk05,
     .bwIndex               = 0x01,
-    .bwIndexDither         = 0x01 
+    .bwIndexDither         = 0x01
 };
 
 // LRF_TxPowerTable data structure
@@ -287,11 +288,11 @@ const LRF_TxPowerTable LRF_txPowerTable = {
     .numEntries            = 0x0000000E,
     .powerTable            = {
         { .power = { .fraction = 0, .dBm = -20 }, .tempCoeff = 0, .value = { .reserved = 0, .ib = 18, .gain = 0, .mode = 0, .noIfampRfLdoBypass = 0 } },
-        { .power = { .fraction = 0, .dBm = -16 }, .tempCoeff = 0, .value = { .reserved = 0, .ib = 20, .gain = 1, .mode = 0, .noIfampRfLdoBypass = 0 } },
-        { .power = { .fraction = 0, .dBm = -12 }, .tempCoeff = 5, .value = { .reserved = 0, .ib = 17, .gain = 3, .mode = 0, .noIfampRfLdoBypass = 0 } },
-        { .power = { .fraction = 0, .dBm = -8 }, .tempCoeff = 12, .value = { .reserved = 0, .ib = 17, .gain = 4, .mode = 0, .noIfampRfLdoBypass = 0 } },
-        { .power = { .fraction = 0, .dBm = -4 }, .tempCoeff = 25, .value = { .reserved = 0, .ib = 17, .gain = 5, .mode = 0, .noIfampRfLdoBypass = 0 } },
-        { .power = { .fraction = 0, .dBm = 0 }, .tempCoeff = 40, .value = { .reserved = 0, .ib = 19, .gain = 6, .mode = 0, .noIfampRfLdoBypass = 0 } },
+        { .power = { .fraction = 0, .dBm = -16 }, .tempCoeff = 0, .value = { .reserved = 0, .ib = 25, .gain = 0, .mode = 0, .noIfampRfLdoBypass = 0 } },
+        { .power = { .fraction = 0, .dBm = -12 }, .tempCoeff = 5, .value = { .reserved = 0, .ib = 29, .gain = 1, .mode = 0, .noIfampRfLdoBypass = 0 } },
+        { .power = { .fraction = 0, .dBm = -8 }, .tempCoeff = 18, .value = { .reserved = 0, .ib = 44, .gain = 1, .mode = 0, .noIfampRfLdoBypass = 0 } },
+        { .power = { .fraction = 0, .dBm = -4 }, .tempCoeff = 28, .value = { .reserved = 0, .ib = 40, .gain = 3, .mode = 0, .noIfampRfLdoBypass = 0 } },
+        { .power = { .fraction = 0, .dBm = 0 }, .tempCoeff = 40, .value = { .reserved = 0, .ib = 21, .gain = 6, .mode = 0, .noIfampRfLdoBypass = 0 } },
         { .power = { .fraction = 0, .dBm = 1 }, .tempCoeff = 65, .value = { .reserved = 0, .ib = 30, .gain = 6, .mode = 0, .noIfampRfLdoBypass = 0 } },
         { .power = { .fraction = 0, .dBm = 2 }, .tempCoeff = 41, .value = { .reserved = 0, .ib = 39, .gain = 4, .mode = 1, .noIfampRfLdoBypass = 0 } },
         { .power = { .fraction = 0, .dBm = 3 }, .tempCoeff = 43, .value = { .reserved = 0, .ib = 31, .gain = 5, .mode = 1, .noIfampRfLdoBypass = 0 } },
@@ -299,7 +300,7 @@ const LRF_TxPowerTable LRF_txPowerTable = {
         { .power = { .fraction = 0, .dBm = 5 }, .tempCoeff = 55, .value = { .reserved = 0, .ib = 27, .gain = 6, .mode = 1, .noIfampRfLdoBypass = 0 } },
         { .power = { .fraction = 0, .dBm = 6 }, .tempCoeff = 75, .value = { .reserved = 0, .ib = 38, .gain = 6, .mode = 1, .noIfampRfLdoBypass = 0 } },
         { .power = { .fraction = 0, .dBm = 7 }, .tempCoeff = 80, .value = { .reserved = 0, .ib = 25, .gain = 7, .mode = 1, .noIfampRfLdoBypass = 0 } },
-        { .power = { .fraction = 0, .dBm = 8 }, .tempCoeff = 180, .value = { .reserved = 0, .ib = 63, .gain = 7, .mode = 1, .noIfampRfLdoBypass = 0 } } 
+        { .power = { .fraction = 0, .dBm = 8 }, .tempCoeff = 180, .value = { .reserved = 0, .ib = 63, .gain = 7, .mode = 1, .noIfampRfLdoBypass = 0 } }
     }
 };
 
@@ -308,5 +309,5 @@ const LRF_Config LRF_config = {
     .pbeImage              = (const LRF_TOPsmImage*) LRF_PBE_binary_ble5,
     .mceImage              = (const LRF_TOPsmImage*) LRF_MCE_binary_ble5,
     .rfeImage              = (const LRF_TOPsmImage*) LRF_RFE_binary_ble5,
-    .regConfigList         = &LRF_regConfigList 
+    .regConfigList         = &LRF_regConfigList
 };
