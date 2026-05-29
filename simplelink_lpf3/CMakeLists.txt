@@ -32,6 +32,7 @@
 
 add_subdirectory(source/ti/devices)
 add_subdirectory(source/ti/boards)
+add_subdirectory(source/ti/log)
 
 include(${CMAKE_CURRENT_LIST_DIR}/CMakeSources.cmake)
 
@@ -44,6 +45,14 @@ if(CONFIG_HAS_CC23X0_SDK)
   endif()
 
   if(CONFIG_SOC_CC2340R53)
+    zephyr_compile_definitions(DeviceFamily_CC23X0R5 ${COMPILER})
+  endif()
+
+  if(CONFIG_SOC_CC2340R5_WCSP)
+      zephyr_compile_definitions(DeviceFamily_CC23X0R5 ${COMPILER})
+  endif()
+
+  if(CONFIG_SOC_CC2340R5MODA)
     zephyr_compile_definitions(DeviceFamily_CC23X0R5 ${COMPILER})
   endif()
 
@@ -80,15 +89,15 @@ endif()
 if(CONFIG_HAS_CC27XX_SDK)
 
   if(CONFIG_SOC_CC2745R10_Q1)
-    zephyr_compile_definitions(DeviceFamily_CC27XX ${COMPILER})
+    zephyr_compile_definitions(DeviceFamily_CC27XXX10 ${COMPILER})
   endif()
 
   if(CONFIG_SOC_CC2755R10)
-    zephyr_compile_definitions(DeviceFamily_CC27XX ${COMPILER})
+    zephyr_compile_definitions(DeviceFamily_CC27XXX10 ${COMPILER})
   endif()
 
   if(CONFIG_SOC_CC2755P10)
-    zephyr_compile_definitions(DeviceFamily_CC27XX ${COMPILER})
+    zephyr_compile_definitions(DeviceFamily_CC27XXX10 ${COMPILER})
   endif()
 
   zephyr_include_directories(

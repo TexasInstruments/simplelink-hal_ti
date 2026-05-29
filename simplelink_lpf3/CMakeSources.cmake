@@ -21,8 +21,12 @@ set(SOURCES_RCL_LPF3
     wrappers/RCL_AdcNoise.c
 
     # HAL
-    hal/cc23x0/hal_cc23x0.c
-    LRFCC23X0.c
+    hal/RCLLPF3_Hal.c
+
+    # LRF
+    lrf/LRFLPF3.c
+    lrf/LRFLPF3_FIFO.c
+    lrf/LRFLPF3_Interface_Generic.c
 
     # RCL feature configuration file
     zephyr/rcl_feature_config.c
@@ -50,7 +54,7 @@ set(SOURCES_DRIVERS_CC23X0
     cryptoutils/cryptokey/CryptoKeyPlaintext.c
     cryptoutils/ecc/ECCInitLPF3SW.c
     cryptoutils/ecc/ECCParamsLPF3SW.c
-    cryptoutils/sharedresources/CryptoResourceLPF3.c
+    cryptoutils/sharedresources/CryptoResourceXXF3.c
     cryptoutils/utils/CryptoUtils.c
     ECDH.c
     ecdh/ECDHLPF3SW.c
@@ -64,7 +68,7 @@ set(SOURCES_DRIVERS_CC27XX
     cryptoutils/cryptokey/CryptoKeyPlaintext.c
     cryptoutils/ecc/ECCInitLPF3SW.c
     cryptoutils/ecc/ECCParamsLPF3SW.c
-    cryptoutils/sharedresources/CryptoResourceLPF3.c
+    cryptoutils/sharedresources/CryptoResourceXXF3.c
     cryptoutils/utils/CryptoUtils.c
     ECDH.c
     ecdh/ECDHLPF3SW.c
